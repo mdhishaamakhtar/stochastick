@@ -36,8 +36,10 @@ export function stepGame(g: GameState, dt: number): void {
   }
   if (g.nextObstacle >= g.obstacles.length) { g.phase = 'dead'; return; }
 
+  // bounds death: deadAt is the nearest upcoming candle, not one the bird touched
   if (hitsBounds(g.bird.y)) { g.phase = 'dead'; g.deadAt = g.obstacles[g.nextObstacle] ?? null; return; }
-  for (let i = g.nextObstacle; i < Math.min(g.nextObstacle + 3, g.obstacles.length); i++) {
+  // start one behind nextObstacle: the just-passed candle stays deadly until the bird fully clears it
+  for (let i = Math.max(0, g.nextObstacle - 1); i < Math.min(g.nextObstacle + 3, g.obstacles.length); i++) {
     const ob = g.obstacles[i]!;
     if (hitsObstacle(g.bird.y, g.scrollX, ob)) { g.phase = 'dead'; g.deadAt = ob; return; }
   }
