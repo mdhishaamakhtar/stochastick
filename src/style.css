@@ -30,13 +30,13 @@ body {
   display: block;
 }
 #ui { position: absolute; inset: 0; pointer-events: none; }
-#ui > * { pointer-events: auto; }
 
 /* ---------- UI overlay ---------- */
 .hidden { display: none !important; }
 
 .picker {
   position: absolute; inset: 0;
+  pointer-events: auto;
   display: flex; flex-direction: column;
   background: var(--bg);
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
@@ -84,6 +84,7 @@ body {
 .ready-overlay, .death-overlay {
   position: absolute; inset: 0; display: grid; place-items: center;
 }
+.death-overlay { pointer-events: auto; }
 .ready-pulse { color: var(--text); font-size: 20px; letter-spacing: 0.2em; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
 
