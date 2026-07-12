@@ -9,13 +9,14 @@ export interface DeathInfo {
 
 export function createHud(root: HTMLElement) {
   const el = document.createElement('div');
-  el.className = 'hud';
+  el.className = 'hud idle';
   el.innerHTML = `
     <div class="hud-top">
       <span class="hud-stock"></span>
       <span class="hud-score">0</span>
     </div>
-    <div class="ready-overlay hidden"><span class="ready-pulse">TAP TO FLAP</span></div>
+    <span class="hud-date"><span class="dt"></span><span class="px"></span></span>
+    <div class="ready-overlay hidden"><span class="ready-pulse">TAP TO FLAP<span class="ready-hint">TAP · CLICK · SPACE</span></span></div>
     <div class="death-overlay hidden">
       <div class="death-card">
         <p class="death-title"></p>
@@ -41,9 +42,17 @@ export function createHud(root: HTMLElement) {
   q<HTMLButtonElement>('.btn-retry').onclick = (e) => { e.stopPropagation(); restartFn(); };
   q<HTMLButtonElement>('.btn-change').onclick = (e) => { e.stopPropagation(); changeFn(); };
 
+  const dateDt = q('.hud-date .dt');
+  const datePx = q('.hud-date .px');
+
   return {
     setScore(n: number) { score.textContent = String(n); },
     setStock(label: string) { stockLabel.textContent = label; },
+    setDate(date: string, price: string) {
+      dateDt.textContent = date;
+      datePx.textContent = price;
+    },
+    setIdle(idle: boolean) { el.classList.toggle('idle', idle); },
     showReady() { ready.classList.remove('hidden'); death.classList.add('hidden'); },
     showDeath(info: DeathInfo) {
       q('.death-title').textContent = info.survivedAll
@@ -51,7 +60,9 @@ export function createHud(root: HTMLElement) {
         : `Rekt on ${info.dateLabel}`;
       q('.death-score').textContent = String(info.score);
       q('.death-detail').textContent = info.price != null ? `Price there: ₹${info.price.toLocaleString('en-IN')}` : '';
-      q('.death-best').textContent = info.isNewBest ? '★ New best!' : `Best: ${info.best}`;
+      const bestEl = q('.death-best');
+      bestEl.textContent = info.isNewBest ? '★ New best!' : `Best: ${info.best}`;
+      bestEl.classList.toggle('new', info.isNewBest);
       death.classList.remove('hidden');
       ready.classList.add('hidden');
     },

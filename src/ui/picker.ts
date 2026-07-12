@@ -9,11 +9,24 @@ export function createPicker(
 ) {
   const el = document.createElement('div');
   el.className = 'picker';
+  const tickerItems = manifest.stocks
+    .map((s) => {
+      const up = (s.spark[s.spark.length - 1] ?? 0) >= (s.spark[0] ?? 0);
+      return `${s.symbol} <span class="${up ? 'up' : 'down'}">${up ? '▲' : '▼'}</span>`;
+    })
+    .join('<span class="sep">·</span>');
   el.innerHTML = `
+    <div class="ticker-tape" aria-hidden="true"><span class="ticker-track">${tickerItems}<span class="sep">·</span>${tickerItems}<span class="sep">·</span></span></div>
     <div class="picker-head">
-      <h1 class="logo">STOCHASTICK</h1>
-      <p class="tagline">Flappy bird on real stock candles. Survive the chart.</p>
-      <input class="search" type="search" placeholder="Search stocks…" autocomplete="off" />
+      <h1 class="logo">
+        <svg class="logo-mark" width="30" height="44" viewBox="0 0 30 44" fill="none" aria-hidden="true">
+          <line x1="15" y1="0" x2="15" y2="44" stroke="#f5b83d" stroke-width="3"/>
+          <rect x="5" y="10" width="20" height="24" rx="3" fill="#f5b83d"/>
+        </svg>
+        <span>STOCHAST<span class="logo-tick">ICK</span></span>
+      </h1>
+      <p class="tagline">Flappy bird on real stock candles. <span class="up">Survive the chart.</span></p>
+      <input class="search" type="search" placeholder="Search stocks…" autocomplete="off" aria-label="Search stocks" />
       <div class="tf-row"></div>
     </div>
     <div class="stock-list"></div>
@@ -74,6 +87,12 @@ export function createPicker(
       drawSpark(row.querySelector('canvas')!, s.spark);
       row.onclick = () => { hide(); onPick(s, tf); };
       list.appendChild(row);
+    }
+    if (!list.hasChildNodes()) {
+      const empty = document.createElement('p');
+      empty.className = 'picker-empty';
+      empty.textContent = `No stocks match “${search.value.trim()}”`;
+      list.appendChild(empty);
     }
   }
 

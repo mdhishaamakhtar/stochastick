@@ -19,6 +19,18 @@ function fitCanvas() {
 fitCanvas();
 window.addEventListener('resize', fitCanvas);
 
+let toastTimer = 0;
+function showToast(msg: string) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.setAttribute('role', 'alert');
+  t.textContent = msg;
+  uiRoot.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => t.remove(), 3500);
+}
+
 async function boot() {
   let manifest;
   try {
@@ -33,15 +45,32 @@ async function boot() {
   let obstacles: Obstacle[] = [];
   let current: { stock: StockMeta; tf: Timeframe } | null = null;
   let scoreShown = -1;
+  let candleShown = -1;
+  let axisFmt: Intl.DateTimeFormat | null = null;
+
+  function updateAxis(idx: number) {
+    const ob = obstacles[Math.min(idx, obstacles.length - 1)];
+    if (!ob || !axisFmt) return;
+    hud.setDate(
+      axisFmt.format(new Date(ob.candle.t * 1000)).toUpperCase(),
+      `₹${ob.candle.c.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+    );
+  }
 
   const picker = createPicker(uiRoot, manifest, async (stock, tf) => {
     try {
       const candles = await loadCandles(stock.symbol, tf);
       obstacles = buildLevel(candles);
       current = { stock, tf };
+      const intraday = tf === '15m' || tf === '1h';
+      axisFmt = new Intl.DateTimeFormat('en-IN', {
+        day: '2-digit', month: 'short',
+        ...(intraday ? { hour: '2-digit', minute: '2-digit', hour12: false } : { year: 'numeric' }),
+      });
       hud.setStock(`${stock.symbol} · ${TF_LABELS[tf]}`);
       startRound();
     } catch {
+      showToast(`Couldn't load ${stock.symbol} — check your connection and retry`);
       picker.show();
     }
   });
@@ -49,7 +78,10 @@ async function boot() {
   function startRound() {
     game = createGame(obstacles);
     scoreShown = -1;
+    candleShown = -1;
     hud.setScore(0);
+    updateAxis(0);
+    hud.setIdle(false);
     hud.showReady();
   }
 
@@ -77,15 +109,27 @@ async function boot() {
   }
 
   hud.onRestart(() => startRound());
-  hud.onChangeStock(() => { game = null; hud.hideOverlays(); picker.show(); });
+  hud.onChangeStock(() => { game = null; hud.setIdle(true); hud.hideOverlays(); picker.show(); });
 
   const loop = startLoop(
     (dt) => {
+      renderer.tick(dt);
       if (!game) return;
       const before = game.phase;
       stepGame(game, dt);
-      if (before === 'playing' && game.phase === 'dead') onDeath(game);
-      if (game.score !== scoreShown) { scoreShown = game.score; hud.setScore(scoreShown); }
+      if (before === 'playing' && game.phase === 'dead') {
+        if (game.deadAt !== null) renderer.onDeath(game.bird.y);
+        onDeath(game);
+      }
+      if (game.score !== scoreShown) {
+        if (scoreShown >= 0 && game.phase === 'playing') renderer.onScore(game.bird.y);
+        scoreShown = game.score;
+        hud.setScore(scoreShown);
+      }
+      if (game.nextObstacle !== candleShown) {
+        candleShown = game.nextObstacle;
+        updateAxis(candleShown);
+      }
     },
     (alpha) => { if (game) renderer.draw(game, alpha); },
   );
@@ -109,10 +153,12 @@ async function boot() {
       hud.hideOverlays();
       loop.setPaused(false);
       tapGame(game); // flap on resume so the bird doesn't just drop
+      renderer.onFlap(game.bird.y);
       return;
     }
     if (game.phase === 'ready') hud.hideOverlays();
     tapGame(game);
+    if (game.phase === 'playing') renderer.onFlap(game.bird.y);
   }
   canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); tap(); });
   window.addEventListener('keydown', (e) => {
