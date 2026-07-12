@@ -13,7 +13,6 @@ const WHITE = '#e6edf7';
 
 const GRID_SPACING = 160; // vertical time-gridline spacing, world units
 const PARALLAX = 0.5;
-const HAZARD_BAND = 14; // world units of red fade at the kill edges
 
 const POOL_SIZE = 64;
 const PARTICLE_GRAVITY = 900;
@@ -150,16 +149,6 @@ export class Renderer {
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // kill-zone edges: thin red hazard bands top and bottom
-    ctx.fillStyle = RED;
-    ctx.globalAlpha = 0.08;
-    ctx.fillRect(0, 0, viewW, HAZARD_BAND);
-    ctx.fillRect(0, WORLD_H - HAZARD_BAND, viewW, HAZARD_BAND);
-    ctx.globalAlpha = 0.5;
-    ctx.fillRect(0, 0, viewW, 2);
-    ctx.fillRect(0, WORLD_H - 2, viewW, 2);
-    ctx.globalAlpha = 1;
-
     // obstacles in view
     for (const ob of g.obstacles) {
       const x = ob.x - scroll;
@@ -232,106 +221,156 @@ function drawCandlePair(ctx: CanvasRenderingContext2D, ob: Obstacle, x: number):
   ctx.strokeRect(x - OBSTACLE_HALF_W + 1, 1, w - 2, topEnd - 2);
 }
 
-function makeBullSprite(): HTMLCanvasElement {
+export function makeBullSprite(): HTMLCanvasElement {
   const size = 128;
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;
   const m = size / 2;
   const HIDE = '#e0a832'; // main coat
-  const HIDE_DARK = '#a8741c'; // shading / muzzle
+  const HIDE_DARK = '#9c6a16'; // shading / muzzle
+  const OUTLINE = '#241703';
   const HORN = '#f2ead8';
+  const HORN_DARK = '#c9bda1';
 
-  // --- horns: thick crescents sweeping up-out from the temples
-  ctx.strokeStyle = HORN;
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 11;
-  ctx.beginPath();
-  ctx.moveTo(m - 20, m - 22);
-  ctx.quadraticCurveTo(m - 42, m - 34, m - 38, m - 56);
-  ctx.moveTo(m + 20, m - 22);
-  ctx.quadraticCurveTo(m + 42, m - 34, m + 38, m - 56);
-  ctx.stroke();
-  // horn tips (taper)
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(m - 38, m - 54);
-  ctx.lineTo(m - 34, m - 62);
-  ctx.moveTo(m + 38, m - 54);
-  ctx.lineTo(m + 34, m - 62);
-  ctx.stroke();
+  // --- horns: filled tapered blades sweeping up and FORWARD (fight stance)
+  const horn = (sx: number) => {
+    ctx.save();
+    if (sx < 0) { ctx.translate(size, 0); ctx.scale(-1, 1); }
+    ctx.fillStyle = HORN;
+    ctx.beginPath();
+    ctx.moveTo(m - 30, m - 14); // thick base at the temple
+    ctx.quadraticCurveTo(m - 52, m - 26, m - 50, m - 48);
+    ctx.quadraticCurveTo(m - 49, m - 60, m - 38, m - 64); // sharp tip
+    ctx.quadraticCurveTo(m - 42, m - 52, m - 36, m - 40); // inner edge back down
+    ctx.quadraticCurveTo(m - 30, m - 28, m - 16, m - 24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // shading streak on the horn
+    ctx.strokeStyle = HORN_DARK;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(m - 27, m - 20);
+    ctx.quadraticCurveTo(m - 44, m - 32, m - 43, m - 50);
+    ctx.stroke();
+    ctx.restore();
+  };
+  horn(1);
+  horn(-1);
 
-  // --- ears: small drooped ovals below/outside the horns
+  // --- ears: pinned back and low (aggression)
   ctx.fillStyle = HIDE_DARK;
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.ellipse(m - 34, m - 8, 11, 7, -0.5, 0, Math.PI * 2);
-  ctx.ellipse(m + 34, m - 8, 11, 7, 0.5, 0, Math.PI * 2);
+  ctx.ellipse(m - 38, m + 2, 12, 6, -0.9, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(m + 38, m + 2, 12, 6, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 
-  // --- head: broad forehead tapering into the jaw
+  // --- head: chiseled — wide brow ridge, hard cheekbones, strong jaw
   ctx.fillStyle = HIDE;
   ctx.beginPath();
-  ctx.moveTo(m - 28, m - 30);
-  ctx.quadraticCurveTo(m, m - 44, m + 28, m - 30); // crown
-  ctx.quadraticCurveTo(m + 40, m - 12, m + 30, m + 16); // right cheek
-  ctx.quadraticCurveTo(m + 18, m + 40, m, m + 42); // chin
-  ctx.quadraticCurveTo(m - 18, m + 40, m - 30, m + 16); // left cheek
-  ctx.quadraticCurveTo(m - 40, m - 12, m - 28, m - 30);
+  ctx.moveTo(m - 30, m - 26); // left temple
+  ctx.quadraticCurveTo(m, m - 38, m + 30, m - 26); // heavy flat crown
+  ctx.lineTo(m + 34, m - 4); // hard right cheekbone
+  ctx.quadraticCurveTo(m + 32, m + 24, m + 14, m + 40); // jaw slope
+  ctx.quadraticCurveTo(m, m + 46, m - 14, m + 40); // chin
+  ctx.quadraticCurveTo(m - 32, m + 24, m - 34, m - 4); // left jaw up
+  ctx.closePath();
   ctx.fill();
-
-  // --- forelock tuft between the horns
-  ctx.fillStyle = HIDE_DARK;
-  ctx.beginPath();
-  ctx.ellipse(m, m - 34, 16, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // --- muzzle: big lighter-band lower half with nostrils
-  ctx.fillStyle = HIDE_DARK;
-  ctx.beginPath();
-  ctx.ellipse(m, m + 22, 26, 17, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // nostrils: angled dark slits (separate paths — no connector line)
-  ctx.fillStyle = '#2b1f0d';
-  ctx.beginPath();
-  ctx.ellipse(m - 11, m + 21, 4, 6, -0.35, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(m + 11, m + 21, 4, 6, 0.35, 0, Math.PI * 2);
-  ctx.fill();
-  // mouth line
-  ctx.strokeStyle = '#2b1f0d';
+  ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(m - 6, m + 33);
-  ctx.quadraticCurveTo(m, m + 36, m + 6, m + 33);
   ctx.stroke();
 
-  // --- eyes: determined — dark pupils under angled brows (separate paths)
-  ctx.fillStyle = '#0b0e14';
+  // --- forelock: rough triangular tuft slammed down the forehead
+  ctx.fillStyle = HIDE_DARK;
   ctx.beginPath();
-  ctx.arc(m - 14, m - 6, 5, 0, Math.PI * 2);
+  ctx.moveTo(m - 16, m - 34);
+  ctx.quadraticCurveTo(m, m - 42, m + 16, m - 34);
+  ctx.quadraticCurveTo(m + 8, m - 26, m, m - 27);
+  ctx.quadraticCurveTo(m - 8, m - 26, m - 16, m - 34);
+  ctx.closePath();
   ctx.fill();
-  ctx.beginPath();
-  ctx.arc(m + 14, m - 6, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = WHITE;
-  ctx.beginPath();
-  ctx.arc(m - 12.5, m - 8, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(m + 15.5, m - 8, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-  // brows: angled in toward the nose (charging face)
-  ctx.strokeStyle = HIDE_DARK;
-  ctx.lineWidth = 4;
+
+  // --- brow ridge: one heavy dark V — the fierce line
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 6;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(m - 22, m - 18);
-  ctx.lineTo(m - 8, m - 13);
-  ctx.moveTo(m + 22, m - 18);
-  ctx.lineTo(m + 8, m - 13);
+  ctx.moveTo(m - 26, m - 20);
+  ctx.lineTo(m - 6, m - 10);
   ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(m + 26, m - 20);
+  ctx.lineTo(m + 6, m - 10);
+  ctx.stroke();
+
+  // --- eyes: narrowed slits glaring from under the brow
+  const eye = (sx: number) => {
+    ctx.save();
+    if (sx < 0) { ctx.translate(size, 0); ctx.scale(-1, 1); }
+    ctx.fillStyle = WHITE;
+    ctx.beginPath();
+    ctx.moveTo(m - 24, m - 8);
+    ctx.quadraticCurveTo(m - 15, m - 12, m - 7, m - 5);
+    ctx.quadraticCurveTo(m - 15, m - 1, m - 24, m - 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#0b0e14';
+    ctx.beginPath();
+    ctx.arc(m - 13, m - 6.5, 3.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+  eye(1);
+  eye(-1);
+
+  // --- muzzle: broad and heavy, flared nostrils, hard mouth
+  ctx.fillStyle = HIDE_DARK;
+  ctx.beginPath();
+  ctx.ellipse(m, m + 25, 25, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  // nostrils: big angled flares
+  ctx.fillStyle = '#1c1202';
+  ctx.beginPath();
+  ctx.ellipse(m - 12, m + 23, 5, 7, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(m + 12, m + 23, 5, 7, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  // mouth: flat grim line
+  ctx.strokeStyle = '#1c1202';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(m - 7, m + 37);
+  ctx.lineTo(m + 7, m + 37);
+  ctx.stroke();
+
+  // --- snort steam: two small puffs off the nostrils
+  ctx.fillStyle = 'rgba(230, 237, 247, 0.7)';
+  ctx.beginPath();
+  ctx.arc(m - 26, m + 30, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(m + 26, m + 30, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(230, 237, 247, 0.4)';
+  ctx.beginPath();
+  ctx.arc(m - 32, m + 34, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(m + 32, m + 34, 2, 0, Math.PI * 2);
+  ctx.fill();
 
   return c;
 }

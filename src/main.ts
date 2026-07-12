@@ -5,8 +5,10 @@ import { buildLevel, type Obstacle } from './game/level.ts';
 import { createGame, stepGame, tapGame, type GameState } from './game/state.ts';
 import { startLoop } from './game/loop.ts';
 import { Renderer } from './game/render.ts';
+import * as audio from './game/audio.ts';
 import { createPicker } from './ui/picker.ts';
 import { createHud } from './ui/hud.ts';
+import { createLanding } from './ui/landing.ts';
 import { getBest, setBest } from './ui/storage.ts';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
@@ -30,6 +32,8 @@ function showToast(msg: string) {
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => t.remove(), 3500);
 }
+
+type Screen = 'landing' | 'picker' | 'game';
 
 async function boot() {
   let manifest;
@@ -57,7 +61,43 @@ async function boot() {
     );
   }
 
+  // ---- screen navigation (landing -> picker -> game), synced to browser history
+  const HASH: Record<Screen, string> = { landing: '#', picker: '#stocks', game: '#play' };
+
+  function applyScreen(s: Screen) {
+    landing[s === 'landing' ? 'show' : 'hide']();
+    if (s === 'picker') picker.show(); else picker.hide();
+    if (s !== 'game') {
+      game = null;
+      hud.setIdle(true);
+      hud.hideOverlays();
+    }
+  }
+
+  function goTo(s: Screen) {
+    applyScreen(s);
+    history.pushState({ s }, '', HASH[s]);
+  }
+
+  window.addEventListener('popstate', (e) => {
+    const s: Screen = (e.state?.s as Screen) ?? 'landing';
+    if (s === 'game') {
+      // forward-button back into the game: restart the round if a stock is loaded
+      if (current) { applyScreen('game'); startRound(); }
+      else { applyScreen('picker'); history.replaceState({ s: 'picker' }, '', HASH.picker); }
+      return;
+    }
+    applyScreen(s);
+  });
+
+  const landing = createLanding(uiRoot, () => {
+    audio.unlock();
+    audio.sfxStart();
+    goTo('picker');
+  });
+
   const picker = createPicker(uiRoot, manifest, async (stock, tf) => {
+    audio.unlock();
     try {
       const candles = await loadCandles(stock.symbol, tf);
       obstacles = buildLevel(candles);
@@ -68,12 +108,16 @@ async function boot() {
         ...(intraday ? { hour: '2-digit', minute: '2-digit', hour12: false } : { year: 'numeric' }),
       });
       hud.setStock(`${stock.symbol} · ${TF_LABELS[tf]}`);
+      goTo('game');
       startRound();
     } catch {
       showToast(`Couldn't load ${stock.symbol} — check your connection and retry`);
       picker.show();
     }
   });
+
+  history.replaceState({ s: 'landing' }, '', HASH.landing);
+  applyScreen('landing');
 
   function startRound() {
     game = createGame(obstacles);
@@ -83,6 +127,7 @@ async function boot() {
     updateAxis(0);
     hud.setIdle(false);
     hud.showReady();
+    audio.sfxStart();
   }
 
   function onDeath(g: GameState) {
@@ -92,16 +137,19 @@ async function boot() {
     setBest(stock.symbol, tf, g.score);
     const at = g.deadAt;
     const survivedAll = at === null;
+    const isNewBest = g.score > prevBest && g.score > 0;
     const dateLabel = at
       ? new Date(at.candle.t * 1000).toLocaleDateString('en-IN', {
           day: 'numeric', month: 'short',
           year: 'numeric', ...(tf === '15m' || tf === '1h' ? { hour: '2-digit', minute: '2-digit' } : {}),
         })
       : '';
+    audio.sfxDeath();
+    if (isNewBest || survivedAll) audio.sfxBest();
     hud.showDeath({
       score: g.score,
       best: Math.max(prevBest, g.score),
-      isNewBest: g.score > prevBest && g.score > 0,
+      isNewBest,
       dateLabel,
       price: at ? at.candle.c : null,
       survivedAll,
@@ -109,7 +157,10 @@ async function boot() {
   }
 
   hud.onRestart(() => startRound());
-  hud.onChangeStock(() => { game = null; hud.setIdle(true); hud.hideOverlays(); picker.show(); });
+  hud.onChangeStock(() => history.back());
+  hud.onBack(() => history.back());
+  hud.setMuted(audio.isMuted());
+  hud.onMute(() => hud.setMuted(audio.toggleMute()));
 
   const loop = startLoop(
     (dt) => {
@@ -122,7 +173,10 @@ async function boot() {
         onDeath(game);
       }
       if (game.score !== scoreShown) {
-        if (scoreShown >= 0 && game.phase === 'playing') renderer.onScore(game.bird.y);
+        if (scoreShown >= 0 && game.phase === 'playing') {
+          renderer.onScore(game.bird.y);
+          audio.sfxScore();
+        }
         scoreShown = game.score;
         hud.setScore(scoreShown);
       }
@@ -148,17 +202,22 @@ async function boot() {
 
   function tap() {
     if (!game || game.phase === 'dead') return;
+    audio.unlock();
     if (suspended) {
       suspended = false;
       hud.hideOverlays();
       loop.setPaused(false);
       tapGame(game); // flap on resume so the bird doesn't just drop
       renderer.onFlap(game.bird.y);
+      audio.sfxFlap();
       return;
     }
     if (game.phase === 'ready') hud.hideOverlays();
     tapGame(game);
-    if (game.phase === 'playing') renderer.onFlap(game.bird.y);
+    if (game.phase === 'playing') {
+      renderer.onFlap(game.bird.y);
+      audio.sfxFlap();
+    }
   }
   canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); tap(); });
   window.addEventListener('keydown', (e) => {

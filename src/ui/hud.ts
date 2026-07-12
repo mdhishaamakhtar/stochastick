@@ -12,7 +12,11 @@ export function createHud(root: HTMLElement) {
   el.className = 'hud idle';
   el.innerHTML = `
     <div class="hud-top">
-      <span class="hud-stock"></span>
+      <span class="hud-left">
+        <button class="hud-btn hud-back" aria-label="Back to stock list">‹</button>
+        <button class="hud-btn hud-mute" aria-label="Toggle sound">🔊</button>
+        <span class="hud-stock"></span>
+      </span>
       <span class="hud-score">0</span>
     </div>
     <span class="hud-date"><span class="dt"></span><span class="px"></span></span>
@@ -39,8 +43,14 @@ export function createHud(root: HTMLElement) {
   const death = q('.death-overlay');
   let restartFn = () => {};
   let changeFn = () => {};
+  let backFn = () => {};
+  let muteFn = () => {};
   q<HTMLButtonElement>('.btn-retry').onclick = (e) => { e.stopPropagation(); restartFn(); };
   q<HTMLButtonElement>('.btn-change').onclick = (e) => { e.stopPropagation(); changeFn(); };
+  const backBtn = q<HTMLButtonElement>('.hud-back');
+  const muteBtn = q<HTMLButtonElement>('.hud-mute');
+  backBtn.onclick = (e) => { e.stopPropagation(); backBtn.blur(); backFn(); };
+  muteBtn.onclick = (e) => { e.stopPropagation(); muteBtn.blur(); muteFn(); };
 
   const dateDt = q('.hud-date .dt');
   const datePx = q('.hud-date .px');
@@ -53,6 +63,9 @@ export function createHud(root: HTMLElement) {
       datePx.textContent = price;
     },
     setIdle(idle: boolean) { el.classList.toggle('idle', idle); },
+    setMuted(m: boolean) { muteBtn.textContent = m ? '🔇' : '🔊'; },
+    onBack(fn: () => void) { backFn = fn; },
+    onMute(fn: () => void) { muteFn = fn; },
     showReady() { ready.classList.remove('hidden'); death.classList.add('hidden'); },
     showDeath(info: DeathInfo) {
       q('.death-title').textContent = info.survivedAll

@@ -189,6 +189,16 @@ body {
   position: absolute; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0;
   display: flex; justify-content: space-between; align-items: baseline; padding: 0 16px;
 }
+.hud-left { display: flex; align-items: center; gap: 8px; }
+.hud-btn {
+  pointer-events: auto;
+  width: 44px; height: 44px; border-radius: 10px;
+  background: rgba(18, 23, 34, 0.75); border: 1px solid var(--line-bright);
+  color: var(--text); font-size: 17px; line-height: 1; cursor: pointer;
+  transition: border-color 150ms var(--ease-out);
+}
+.hud-btn:hover { border-color: var(--accent); }
+.hud-back { font-size: 26px; padding-bottom: 4px; }
 .hud-stock {
   font-family: var(--font-mono);
   color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
@@ -221,11 +231,14 @@ body {
   transform: translateY(14vh); /* keep clear of the bull's flight line */
   font-family: var(--font-mono);
   color: var(--text); font-size: 18px; letter-spacing: 0.25em;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-  animation: pulse 1.2s ease-in-out infinite;
+  background: rgba(11, 14, 20, 0.78);
+  border: 1px solid var(--line-bright);
+  border-radius: 14px;
+  padding: 16px 26px 14px 30px;
+  animation: pulse 1.6s ease-in-out infinite;
 }
 .ready-hint { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
-@keyframes pulse { 50% { opacity: 0.35; } }
+@keyframes pulse { 50% { opacity: 0.55; } }
 
 .death-card {
   background: var(--surface); border: 1px solid var(--line-bright); border-radius: 16px;
@@ -281,6 +294,90 @@ body {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
 }
 
+/* ---------- Landing ---------- */
+.landing {
+  position: absolute; inset: 0;
+  pointer-events: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0;
+  background:
+    radial-gradient(100% 60% at 50% 0%, rgba(245, 184, 61, 0.08), transparent 55%),
+    radial-gradient(80% 50% at 50% 110%, rgba(34, 197, 139, 0.06), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgba(30, 38, 53, 0.55) 47px 48px),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(30, 38, 53, 0.35) 47px 48px),
+    var(--bg);
+  padding: max(20px, env(safe-area-inset-top)) 24px max(16px, env(safe-area-inset-bottom));
+  text-align: center;
+}
+.landing-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  max-width: 640px;
+  margin: auto 0;
+}
+.landing-bull {
+  width: clamp(110px, 18vh, 150px); height: auto;
+  animation: bull-float 3.2s ease-in-out infinite;
+}
+@keyframes bull-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-14px) rotate(3deg); }
+}
+.landing-logo {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 9vw, 84px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  text-wrap: balance;
+}
+.landing-tag {
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 2.4vw, 17px);
+  color: var(--text);
+}
+.landing-sub {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 52ch;
+}
+.landing-sub .up { color: var(--green); }
+.landing-cta {
+  flex: none;
+  min-width: 240px;
+  min-height: 56px;
+  font-size: 15px;
+  margin-top: 10px;
+  box-shadow: 0 12px 40px rgba(245, 184, 61, 0.25);
+}
+.landing-hint {
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.landing-foot {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+/* ---------- Desktop layout ---------- */
+@media (min-width: 900px) {
+  .picker { padding-left: 32px; padding-right: 32px; }
+  .picker-head { max-width: 880px; }
+  .stock-list {
+    max-width: 880px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    align-content: start;
+  }
+  .picker-empty { grid-column: 1 / -1; }
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
@@ -288,4 +385,5 @@ body {
   .death-card, .toast { animation: none; }
   .death-best.new { animation: none; }
   .stock-row, .stock-row:hover, .stock-row:active { transform: none; }
+  .landing-bull { animation: none; }
 }
