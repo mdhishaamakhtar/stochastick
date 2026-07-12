@@ -116,7 +116,12 @@ async function boot() {
   }
   canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); tap(); });
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); tap(); }
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      e.preventDefault();
+      tap();
+    }
   });
 }
 
