@@ -31,7 +31,8 @@ const UNIVERSE: Array<{ yahoo: string; symbol: string; name: string; index?: boo
   { yahoo: 'NTPC.NS', symbol: 'NTPC', name: 'NTPC' },
   { yahoo: 'HCLTECH.NS', symbol: 'HCLTECH', name: 'HCL Technologies' },
   { yahoo: 'POWERGRID.NS', symbol: 'POWERGRID', name: 'Power Grid' },
-  { yahoo: 'TATAMOTORS.NS', symbol: 'TATAMOTORS', name: 'Tata Motors' },
+  { yahoo: 'TMCV.NS', symbol: 'TMCV', name: 'Tata Motors (CV)' },
+  { yahoo: 'TMPV.NS', symbol: 'TMPV', name: 'Tata Motors (PV)' },
   { yahoo: 'TATASTEEL.NS', symbol: 'TATASTEEL', name: 'Tata Steel' },
   { yahoo: 'ADANIENT.NS', symbol: 'ADANIENT', name: 'Adani Enterprises' },
   { yahoo: 'ADANIPORTS.NS', symbol: 'ADANIPORTS', name: 'Adani Ports' },
@@ -56,7 +57,7 @@ const UNIVERSE: Array<{ yahoo: string; symbol: string; name: string; index?: boo
   { yahoo: 'HDFCLIFE.NS', symbol: 'HDFCLIFE', name: 'HDFC Life' },
   { yahoo: 'BAJAJ-AUTO.NS', symbol: 'BAJAJ-AUTO', name: 'Bajaj Auto' },
   { yahoo: 'SHRIRAMFIN.NS', symbol: 'SHRIRAMFIN', name: 'Shriram Finance' },
-  { yahoo: 'LTIM.NS', symbol: 'LTIM', name: 'LTIMindtree' },
+  { yahoo: 'LTTS.NS', symbol: 'LTTS', name: 'L&T Technology Services' },
 ];
 
 const TF_PARAMS: Record<Timeframe, { range: string; interval: string }> = {
