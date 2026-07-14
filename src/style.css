@@ -1,24 +1,38 @@
 /* ---------- Fonts (self-hosted, latin subsets) ---------- */
 @font-face {
-  font-family: 'Archivo Black';
+  font-family: 'Bungee';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/archivo-black-latin.woff2') format('woff2');
+  src: url('/fonts/bungee-latin.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: 'Martian Mono';
   font-style: normal;
-  font-weight: 100 800;
+  font-weight: 400;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+  src: url('/fonts/martian-mono-latin-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Martian Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/martian-mono-latin-700.woff2') format('woff2');
 }
 
 /* ---------- Tokens ----------
    Flat by rule: no gradients, no glow shadows. Depth comes from borders
    and plain black elevation shadows only.
    Green/red are market semantics (candles, up/down, the two fighters).
-   Violet is the arcade chrome: interactive states, primary actions, brand tick. */
+   Violet is the arcade chrome: interactive states, primary actions, brand tick.
+
+   Type registers — each family has one job:
+   - Bungee (display): arcade marquee — wordmark, scores, prompts, titles.
+   - Martian Mono (data): anything a terminal would print — ticker, symbols,
+     prices, dates, timeframes, best scores, the search input.
+   - System sans (ui): quiet chrome — taglines, hints, buttons, captions.
+   Size ramp: 11 / 13 / 15 / 18 + display sizes. Tracking: caps 0.08em only. */
 :root {
   --bg: #0a0b13;
   --surface: #11131f;
@@ -34,9 +48,15 @@
   --green-tint: rgba(34, 214, 142, 0.12);
   --red: #ff5964;
 
-  --font-display: 'Archivo Black', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Bungee', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --track-caps: 0.08em;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --shadow-raise: 0 16px 40px rgba(0, 0, 0, 0.45);
@@ -55,7 +75,8 @@ html, body { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
+  font-kerning: normal;
   overflow: hidden;
 }
 :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
@@ -98,8 +119,8 @@ body {
   overflow: hidden;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
   color: var(--muted);
   user-select: none;
 }
@@ -120,25 +141,23 @@ body {
 .logo {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(30px, 7vw, 44px);
+  font-size: clamp(26px, 6vw, 38px);
   line-height: 1.05;
-  letter-spacing: 0.015em;
   color: var(--text);
-  display: flex; align-items: baseline; gap: 12px;
+  display: flex; align-items: center; gap: 12px;
   text-wrap: balance;
 }
-.logo .logo-mark { flex: none; transform: translateY(2px); }
+.logo .logo-mark { flex: none; }
 .logo .logo-tick { color: var(--violet); }
 .tagline {
-  font-family: var(--font-mono);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
   margin-bottom: 4px;
 }
 
 .search {
   background: var(--surface); border: 1px solid var(--line); color: var(--text);
-  font-family: var(--font-mono); font-size: 15px;
+  font-family: var(--font-mono); font-size: var(--text-md);
   border-radius: 10px; padding: 12px 14px; min-height: 48px; outline: none;
   transition: border-color 150ms var(--ease-out);
 }
@@ -149,7 +168,7 @@ body {
 .pill {
   flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--surface); color: var(--muted);
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--track-caps); text-transform: uppercase;
   cursor: pointer;
   transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 }
@@ -177,13 +196,13 @@ body {
 .stock-row:hover { border-color: var(--line-bright); background: var(--surface-2); }
 .stock-row:active { border-color: var(--violet); }
 .stock-row.loading { border-color: var(--violet); opacity: 0.6; pointer-events: none; }
-.stock-names { display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
-.stock-sym { font-family: var(--font-mono); font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
-.stock-name { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stock-names { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.stock-sym { font-family: var(--font-mono); font-weight: 700; font-size: var(--text-sm); }
+.stock-name { font-family: var(--font-ui); color: var(--muted); font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stock-row .spark { width: 60px; height: 24px; }
-.stock-best { font-family: var(--font-mono); color: var(--violet); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.stock-best { font-family: var(--font-mono); color: var(--violet); font-size: var(--text-sm); text-align: right; font-variant-numeric: tabular-nums; }
 .picker-empty {
-  font-family: var(--font-mono); color: var(--muted); font-size: 13px;
+  color: var(--muted); font-size: var(--text-sm);
   text-align: center; padding: 32px 0;
 }
 
@@ -208,7 +227,7 @@ body {
 .hud-fighter canvas { width: 30px; height: 30px; display: block; }
 .hud-stock {
   font-family: var(--font-mono);
-  color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); font-size: var(--text-xs); letter-spacing: var(--track-caps); text-transform: uppercase;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   align-self: center;
 }
@@ -221,7 +240,7 @@ body {
   position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   font-family: var(--font-mono);
-  font-size: 12px; letter-spacing: 0.1em; color: var(--muted);
+  font-size: var(--text-xs); letter-spacing: 0.04em; color: var(--muted);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
@@ -237,16 +256,20 @@ body {
 .ready-pulse {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   transform: translateY(14vh); /* keep clear of the fighter's flight line */
-  font-family: var(--font-mono);
-  color: var(--text); font-size: 18px; letter-spacing: 0.25em;
+  font-family: var(--font-display);
+  color: var(--text); font-size: 20px; letter-spacing: 0.04em;
   background: var(--surface);
   border: 1px solid var(--line-bright);
   border-radius: 14px;
-  padding: 16px 26px 14px 30px;
+  padding: 16px 26px 14px;
   box-shadow: var(--shadow-raise);
   animation: ready-blink 1.6s ease-in-out infinite;
 }
-.ready-hint { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); }
+.ready-hint {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs); letter-spacing: var(--track-caps); text-transform: uppercase;
+  color: var(--muted);
+}
 @keyframes ready-blink { 50% { border-color: var(--violet); } }
 
 .death-card {
@@ -261,7 +284,7 @@ body {
 }
 .death-title {
   font-family: var(--font-display);
-  color: var(--red); font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--red); font-size: 16px; letter-spacing: 0.02em;
   text-wrap: balance;
 }
 .death-score {
@@ -269,7 +292,7 @@ body {
   font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums;
   margin: 2px 0;
 }
-.death-detail, .death-best { font-family: var(--font-mono); color: var(--muted); font-size: 13px; }
+.death-detail, .death-best { font-family: var(--font-mono); color: var(--muted); font-size: var(--text-sm); }
 .death-best.new { color: var(--violet); animation: best-pop 400ms var(--ease-out); }
 @keyframes best-pop {
   0% { transform: scale(0.6); opacity: 0; }
@@ -278,13 +301,14 @@ body {
 .death-buttons { display: flex; gap: 10px; margin-top: 12px; }
 .btn {
   flex: 1; min-height: 48px; border-radius: 10px; cursor: pointer;
-  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font-ui); font-weight: 700; font-size: var(--text-sm);
+  letter-spacing: var(--track-caps); text-transform: uppercase;
   border: 1px solid var(--line-bright); background: var(--bg); color: var(--text);
   transition: border-color 150ms var(--ease-out), filter 150ms var(--ease-out), transform 100ms var(--ease-out);
 }
 .btn:hover { border-color: var(--violet); }
 .btn:active { transform: scale(0.98); }
-.btn-primary { background: var(--violet); border-color: var(--violet); color: var(--violet-ink); font-weight: 700; }
+.btn-primary { background: var(--violet); border-color: var(--violet); color: var(--violet-ink); }
 .btn-primary:hover { filter: brightness(1.08); }
 
 /* ---------- Toast ---------- */
@@ -294,7 +318,7 @@ body {
   z-index: var(--z-toast);
   pointer-events: none;
   background: var(--surface); border: 1px solid var(--red); color: var(--text);
-  font-family: var(--font-mono); font-size: 13px;
+  font-size: var(--text-sm);
   border-radius: 10px; padding: 12px 18px;
   box-shadow: var(--shadow-raise);
   animation: toast-in 220ms var(--ease-out);
@@ -321,27 +345,25 @@ body {
 .landing-logo {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(40px, 9vw, 84px);
+  font-size: clamp(34px, 7.5vw, 72px);
   line-height: 1;
-  letter-spacing: 0.01em;
   color: var(--text);
   text-wrap: balance;
 }
 .landing-logo .logo-tick { color: var(--violet); }
 .landing-tag {
-  font-family: var(--font-mono);
-  font-size: clamp(14px, 2.4vw, 17px);
+  font-size: clamp(15px, 2.4vw, 17px);
   color: var(--text);
 }
 .landing-sub {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-md);
   line-height: 1.55;
   max-width: 52ch;
 }
 .landing-choose {
-  font-family: var(--font-mono);
-  font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 14px; letter-spacing: 0.06em;
   color: var(--violet);
   margin-top: clamp(8px, 2.5vh, 22px);
 }
@@ -366,22 +388,21 @@ body {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
   50% { transform: translateY(-8px) rotate(2deg); }
 }
-.fighter-name { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; }
+.fighter-name { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.02em; }
 .fighter-bull .fighter-name { color: var(--green); }
 .fighter-bear .fighter-name { color: var(--red); }
 .fighter-sub {
-  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  font-family: var(--font-ui); font-size: var(--text-xs); letter-spacing: var(--track-caps);
   text-transform: uppercase; color: var(--muted);
 }
 .landing-hint {
-  font-family: var(--font-mono);
-  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs); letter-spacing: var(--track-caps); text-transform: uppercase;
   color: var(--muted);
   margin-top: 14px;
 }
 .landing-foot {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--muted);
   opacity: 0.75;
 }

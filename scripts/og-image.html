@@ -2,22 +2,24 @@
 <meta charset="utf-8">
 <title>og-gen</title>
 <style>
-  @font-face { font-family: 'Archivo Black'; font-weight: 400; src: url('/fonts/archivo-black-latin.woff2') format('woff2'); }
-  @font-face { font-family: 'JetBrains Mono'; font-weight: 100 800; src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'Bungee'; font-weight: 400; src: url('/fonts/bungee-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'Martian Mono'; font-weight: 400; src: url('/fonts/martian-mono-latin-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Martian Mono'; font-weight: 700; src: url('/fonts/martian-mono-latin-700.woff2') format('woff2'); }
   body { background: #333; margin: 0; }
   canvas { outline: 1px solid #666; }
 </style>
-<canvas id="og" width="1200" height="630"></canvas>
+<canvas id="og" width="2400" height="1260" style="width:1200px;height:630px"></canvas>
 <script type="module">
 import { makeBullSprite, makeBearSprite } from '/src/game/render.ts';
 
 const c = document.getElementById('og');
 const x = c.getContext('2d');
+x.scale(2, 2); // author in 1200x630 space, export at 2x for retina-crisp README
 
 await Promise.all([
-  document.fonts.load('400 88px "Archivo Black"'),
-  document.fonts.load('700 30px "JetBrains Mono"'),
-  document.fonts.load('400 22px "JetBrains Mono"'),
+  document.fonts.load('400 88px "Bungee"'),
+  document.fonts.load('700 28px "Martian Mono"'),
+  document.fonts.load('400 20px "Martian Mono"'),
 ]);
 await document.fonts.ready;
 
@@ -59,27 +61,27 @@ x.save(); x.translate(1038, 392); x.rotate(0.14); x.drawImage(bear, -56, -56, 11
 // ---- left side: wordmark + copy
 const L = 84;
 x.textBaseline = 'alphabetic';
-x.font = '400 88px "Archivo Black"';
+x.font = '400 82px "Bungee"';
 x.fillStyle = '#f0f2f9';
 x.fillText('STOCHAST', L, 296);
 const w1 = x.measureText('STOCHAST').width;
 x.fillStyle = '#8f7bff';
 x.fillText('ICK', L + w1, 296);
 
-x.font = '700 30px "JetBrains Mono"';
+x.font = '700 28px "Martian Mono"';
 x.fillStyle = '#f0f2f9';
 x.fillText('Flappy Bird on real stock candles.', L, 356);
 
-x.font = '400 22px "JetBrains Mono"';
+x.font = '400 20px "Martian Mono"';
 x.fillStyle = '#9ba1b8';
-x.fillText('Fly a bull or a bear through real NSE charts —', L, 398);
-x.fillText('54 stocks & indices, 4 timeframes. Survive the chart.', L, 430);
+x.fillText('Fly a bull or a bear through real NSE charts.', L, 398);
+x.fillText('54 stocks & indices · 4 timeframes.', L, 430);
 
 x.fillStyle = '#22d68e'; x.fillRect(L, 468, 64, 4);
 x.fillStyle = '#8f7bff'; x.fillRect(L + 76, 468, 24, 4);
 x.fillStyle = '#ff5964'; x.fillRect(L + 112, 468, 24, 4);
 
-x.font = '400 22px "JetBrains Mono"';
+x.font = '400 20px "Martian Mono"';
 x.fillStyle = '#6e7681';
 x.fillText('stochastick.hishaam.dev', L, 552);
 
