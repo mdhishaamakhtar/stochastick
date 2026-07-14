@@ -19,9 +19,19 @@ export function createPicker(
     <div class="ticker-tape" aria-hidden="true"><span class="ticker-track">${tickerItems}<span class="sep">·</span>${tickerItems}<span class="sep">·</span></span></div>
     <div class="picker-head">
       <h1 class="logo">
-        <svg class="logo-mark" width="30" height="44" viewBox="0 0 30 44" fill="none" aria-hidden="true">
-          <line x1="15" y1="0" x2="15" y2="44" stroke="#22d68e" stroke-width="3"/>
-          <rect x="5" y="10" width="20" height="24" rx="3" fill="#22d68e"/>
+        <svg class="logo-mark" width="40" height="40" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <path d="M20 15 Q8 10 10 1.5 Q17 8 28 9.5 L28 15 Z" fill="#f2ead8"/>
+          <path d="M32 11 L22 13 Q12 19 12 30 Q12 45 23 51 Q28 54 32 54 Z" fill="#22d68e"/>
+          <circle cx="47" cy="11" r="7.5" fill="#ff5964"/>
+          <circle cx="47" cy="11" r="3.2" fill="#0a0b13"/>
+          <path d="M32 11 L42 13 Q52 19 52 30 Q52 45 41 51 Q36 54 32 54 Z" fill="#ff5964"/>
+          <line x1="32" y1="10" x2="32" y2="55" stroke="#0a0b13" stroke-width="2.4"/>
+          <path d="M16 24 L26 28.5" stroke="#0a0b13" stroke-width="3.4" stroke-linecap="round"/>
+          <path d="M48 24 L38 28.5" stroke="#0a0b13" stroke-width="3.4" stroke-linecap="round"/>
+          <circle cx="22.5" cy="32" r="2.7" fill="#0a0b13"/>
+          <circle cx="41.5" cy="32" r="2.7" fill="#0a0b13"/>
+          <ellipse cx="25" cy="45" rx="2.1" ry="3" transform="rotate(-16 25 45)" fill="#0a0b13"/>
+          <ellipse cx="39" cy="45" rx="2.1" ry="3" transform="rotate(16 39 45)" fill="#0a0b13"/>
         </svg>
         <span>STOCHAST<span class="logo-tick">ICK</span></span>
       </h1>

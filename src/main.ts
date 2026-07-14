@@ -92,10 +92,18 @@ async function boot() {
   });
 
   renderer.setFighter(getFighter());
+  hud.setFighter(getFighter());
+  hud.onFighter(() => {
+    const next = getFighter() === 'bear' ? 'bull' : 'bear';
+    setFighter(next);
+    renderer.setFighter(next);
+    hud.setFighter(next);
+  });
 
   const landing = createLanding(uiRoot, (fighter) => {
     setFighter(fighter);
     renderer.setFighter(fighter);
+    hud.setFighter(fighter);
     audio.unlock();
     audio.sfxStart();
     goTo('picker');

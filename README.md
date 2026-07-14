@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 -->
 
 <p align="center">
-  <img src="./public/favicon.svg" alt="Stochastick Preview" width="120">
+  <img src="./public/og-image.png" alt="Stochastick Preview">
 </p>
 
 ## Stochastick

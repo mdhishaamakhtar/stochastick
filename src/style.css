@@ -205,6 +205,7 @@ body {
   transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
 .hud-btn:hover { border-color: var(--violet); color: var(--violet); }
+.hud-fighter canvas { width: 30px; height: 30px; display: block; }
 .hud-stock {
   font-family: var(--font-mono);
   color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;

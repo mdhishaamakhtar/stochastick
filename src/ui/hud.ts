@@ -1,3 +1,5 @@
+import { makeBullSprite, makeBearSprite, type Fighter } from '../game/render.ts';
+
 export interface DeathInfo {
   score: number;
   best: number;
@@ -22,6 +24,7 @@ export function createHud(root: HTMLElement) {
       <span class="hud-left">
         <button class="hud-btn hud-back" aria-label="Back to stock list">${ICON_BACK}</button>
         <button class="hud-btn hud-mute" aria-label="Toggle sound">${ICON_SOUND}</button>
+        <button class="hud-btn hud-fighter" aria-label="Switch between bull and bear"><canvas width="64" height="64"></canvas></button>
         <span class="hud-stock"></span>
       </span>
       <span class="hud-score">0</span>
@@ -54,10 +57,19 @@ export function createHud(root: HTMLElement) {
   let muteFn = () => {};
   q<HTMLButtonElement>('.btn-retry').onclick = (e) => { e.stopPropagation(); restartFn(); };
   q<HTMLButtonElement>('.btn-change').onclick = (e) => { e.stopPropagation(); changeFn(); };
+  let fighterFn = () => {};
   const backBtn = q<HTMLButtonElement>('.hud-back');
   const muteBtn = q<HTMLButtonElement>('.hud-mute');
+  const fighterBtn = q<HTMLButtonElement>('.hud-fighter');
   backBtn.onclick = (e) => { e.stopPropagation(); backBtn.blur(); backFn(); };
   muteBtn.onclick = (e) => { e.stopPropagation(); muteBtn.blur(); muteFn(); };
+  fighterBtn.onclick = (e) => { e.stopPropagation(); fighterBtn.blur(); fighterFn(); };
+
+  const fighterIcons: Record<Fighter, HTMLCanvasElement> = {
+    bull: makeBullSprite(),
+    bear: makeBearSprite(),
+  };
+  const fighterCtx = fighterBtn.querySelector('canvas')!.getContext('2d')!;
 
   const dateDt = q('.hud-date .dt');
   const datePx = q('.hud-date .px');
@@ -71,6 +83,11 @@ export function createHud(root: HTMLElement) {
     },
     setIdle(idle: boolean) { el.classList.toggle('idle', idle); },
     setMuted(m: boolean) { muteBtn.innerHTML = m ? ICON_MUTED : ICON_SOUND; },
+    setFighter(f: Fighter) {
+      fighterCtx.clearRect(0, 0, 64, 64);
+      fighterCtx.drawImage(fighterIcons[f], 0, 0, 64, 64);
+    },
+    onFighter(fn: () => void) { fighterFn = fn; },
     onBack(fn: () => void) { backFn = fn; },
     onMute(fn: () => void) { muteFn = fn; },
     showReady() { ready.classList.remove('hidden'); death.classList.add('hidden'); },
