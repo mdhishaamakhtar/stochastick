@@ -8,6 +8,8 @@
 
 Flappy Bird played on real Indian stock market candlestick charts. Pick a stock, pick a timeframe, survive the chart.
 
+**Play it: [stochastick.hishaam.dev](https://stochastick.hishaam.dev)**
+
 No backend, no accounts, no API keys at runtime — a fully static site that ships the market data with it.
 
 ## What It Does
@@ -105,7 +107,7 @@ This is a game, not a trading terminal — nothing here is financial advice. Mar
 
 ## Deployment
 
-Static output in `dist/`, deployed on Vercel. Pushes to `main` auto-deploy.
+Static output in `dist/`, deployed on Vercel at [stochastick.hishaam.dev](https://stochastick.hishaam.dev). Pushes to `main` auto-deploy.
 
 ## Contributor
 
