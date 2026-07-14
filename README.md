@@ -12,6 +12,7 @@ No backend, no accounts, no API keys at runtime — a fully static site that shi
 
 ## What It Does
 
+- Choose your fighter — the bull rides the rally, the bear outlives the crash
 - Pick any of ~54 NSE instruments (Nifty 50 constituents + NIFTY 50, BANK NIFTY, SENSEX) and a timeframe — 15m, 1h, Daily, or Weekly
 - The stock's real price history becomes the level, played chronologically left to right
 - Each candle turns into an obstacle pair — one rising from the floor, an inverted mirror hanging from the ceiling — the gap tracks the candle's close price
@@ -52,7 +53,7 @@ The production build is tiny — under 12 kB gzipped for the entire app shell (`
 
 Each candle becomes an obstacle pair: the real candle rising from the floor, an inverted mirror of it hanging from the ceiling. The gap between them tracks the candle's close price, rolling-normalized against its neighbors — so a rally climbs the level and a crash sends the gap diving toward the floor. The chart's actual shape *is* the level.
 
-You're a chubby golden bull (pure Dalal Street energy). Tap, click, or hit Space to flap through the gaps. Level generation is unit-tested against an invariant: **any** real (or adversarial synthetic) price series produces a completable level — gap size is clamped to a playable range, and no single step exceeds what the flap physics can reach.
+You play as a fierce bull or a snarling bear (pure Dalal Street energy — pick your side on the landing page). Tap, click, or hit Space to flap through the gaps. Level generation is unit-tested against an invariant: **any** real (or adversarial synthetic) price series produces a completable level — gap size is clamped to a playable range, and no single step exceeds what the flap physics can reach.
 
 ## Scripts
 

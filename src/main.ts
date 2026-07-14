@@ -9,7 +9,7 @@ import * as audio from './game/audio.ts';
 import { createPicker } from './ui/picker.ts';
 import { createHud } from './ui/hud.ts';
 import { createLanding } from './ui/landing.ts';
-import { getBest, setBest } from './ui/storage.ts';
+import { getBest, setBest, getFighter, setFighter } from './ui/storage.ts';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const uiRoot = document.querySelector<HTMLElement>('#ui')!;
@@ -69,6 +69,7 @@ async function boot() {
     if (s === 'picker') picker.show(); else picker.hide();
     if (s !== 'game') {
       game = null;
+      renderer.clear(); // drop the last game frame so it can't flash later
       hud.setIdle(true);
       hud.hideOverlays();
     }
@@ -90,7 +91,11 @@ async function boot() {
     applyScreen(s);
   });
 
-  const landing = createLanding(uiRoot, () => {
+  renderer.setFighter(getFighter());
+
+  const landing = createLanding(uiRoot, (fighter) => {
+    setFighter(fighter);
+    renderer.setFighter(fighter);
     audio.unlock();
     audio.sfxStart();
     goTo('picker');

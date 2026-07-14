@@ -2,14 +2,16 @@ import type { GameState } from './state.ts';
 import type { Obstacle } from './level.ts';
 import { WORLD_H, BIRD_X, BIRD_R, OBSTACLE_HALF_W, PHYS_DT } from './constants.ts';
 
-const BG = '#0b0e14';
-const GRID = '#1e2635';
-const GREEN = '#22c58b';
-const GREEN_DIM = '#12362b';
-const RED = '#f0505a';
-const RED_DIM = '#3d1f28';
-const GOLD = '#f5b83d';
-const WHITE = '#e6edf7';
+const BG = '#0a0b13';
+const GRID = '#232739';
+const GREEN = '#22d68e';
+const GREEN_DIM = '#0e3626';
+const RED = '#ff5964';
+const RED_DIM = '#3c1a22';
+const SMOKE = '#dfe7f2';
+const WHITE = '#f0f2f9';
+
+export type Fighter = 'bull' | 'bear';
 
 const GRID_SPACING = 160; // vertical time-gridline spacing, world units
 const PARALLAX = 0.5;
@@ -30,8 +32,9 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private scale = 1;
   private bull: HTMLCanvasElement;
+  private bear: HTMLCanvasElement;
+  private avatar: HTMLCanvasElement;
   private scorePop: HTMLCanvasElement;
-  private bgGrad: CanvasGradient | null = null;
 
   private pool: Particle[] = [];
   private flapT = 0;
@@ -42,10 +45,12 @@ export class Renderer {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
-    this.bull = makeBullSprite();
+    this.bull = makeBullSprite(2);
+    this.bear = makeBearSprite(2);
+    this.avatar = this.bull;
     this.scorePop = makeScorePopSprite();
     for (let i = 0; i < POOL_SIZE; i++) {
-      this.pool.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, ttl: 1, size: 4, color: GOLD });
+      this.pool.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, ttl: 1, size: 4, color: SMOKE });
     }
   }
 
@@ -56,11 +61,19 @@ export class Renderer {
     this.canvas.style.width = `${cssW}px`;
     this.canvas.style.height = `${cssH}px`;
     this.scale = (cssH / WORLD_H) * dpr;
-    const grad = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-    grad.addColorStop(0, '#0e1220');
-    grad.addColorStop(0.5, BG);
-    grad.addColorStop(1, '#090b10');
-    this.bgGrad = grad;
+  }
+
+  setFighter(f: Fighter): void {
+    this.avatar = f === 'bear' ? this.bear : this.bull;
+  }
+
+  /** Paint the idle backdrop over whatever frame is left on the canvas
+   *  (called when leaving the game screen so no stale frame lingers). */
+  clear(): void {
+    const { ctx } = this;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   /** Advance effect timers/particles. Called from the fixed-step update. */
@@ -79,7 +92,7 @@ export class Renderer {
 
   onFlap(y: number): void {
     this.flapT = 0.18;
-    this.spawn(3, BIRD_X - 16, y + 10, -90, 40, 60, 90, 0.35, 3, GOLD);
+    this.spawn(3, BIRD_X - 16, y + 10, -90, 40, 60, 90, 0.35, 3, SMOKE);
   }
 
   onScore(y: number): void {
@@ -90,7 +103,7 @@ export class Renderer {
   onDeath(y: number): void {
     this.deathFlash = 0.55;
     this.spawn(10, BIRD_X, y, 0, 0, 260, 200, 0.75, 6, RED);
-    this.spawn(9, BIRD_X, y, 0, 0, 220, 180, 0.7, 5, GOLD);
+    this.spawn(9, BIRD_X, y, 0, 0, 220, 180, 0.7, 5, GREEN);
     this.spawn(7, BIRD_X, y, 0, 0, 180, 160, 0.6, 4, WHITE);
   }
 
@@ -120,7 +133,7 @@ export class Renderer {
     const s = this.scale;
     const W = this.canvas.width, H = this.canvas.height;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = this.bgGrad ?? BG;
+    ctx.fillStyle = BG;
     ctx.fillRect(0, 0, W, H);
 
     // horizontal price gridlines (device space)
@@ -180,7 +193,7 @@ export class Renderer {
     ctx.translate(BIRD_X, by);
     ctx.rotate(g.bird.rot);
     ctx.scale(1 + squash * 0.1, 1 - squash * 0.12);
-    ctx.drawImage(this.bull, -BIRD_R * 1.4, -BIRD_R * 1.4, BIRD_R * 2.8, BIRD_R * 2.8);
+    ctx.drawImage(this.avatar, -BIRD_R * 1.4, -BIRD_R * 1.4, BIRD_R * 2.8, BIRD_R * 2.8);
     ctx.restore();
 
     // death flash vignette
@@ -201,35 +214,43 @@ function drawCandlePair(ctx: CanvasRenderingContext2D, ob: Obstacle, x: number):
   const wick = 26; // cosmetic wick length at the gap-facing end
   const w = OBSTACLE_HALF_W * 2;
 
-  // bottom pillar: body from floor up, wick pointing into the gap
-  ctx.fillStyle = dim;
-  ctx.fillRect(x - OBSTACLE_HALF_W, botStart, w, WORLD_H - botStart);
-  ctx.fillStyle = body;
-  ctx.fillRect(x - OBSTACLE_HALF_W, botStart, w, 6); // rim
-  ctx.fillRect(x - 3, botStart - wick, 6, wick); // wick
-  ctx.strokeStyle = body;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x - OBSTACLE_HALF_W + 1, botStart + 1, w - 2, WORLD_H - botStart - 2);
+  // bottom pillar: body from floor up, wick pointing into the gap.
+  // Skip entirely when the gap reaches the floor — a pillar with no body
+  // must not leave orphaned wicks/outlines behind.
+  if (botStart < WORLD_H - 2) {
+    ctx.fillStyle = dim;
+    ctx.fillRect(x - OBSTACLE_HALF_W, botStart, w, WORLD_H - botStart);
+    ctx.fillStyle = body;
+    ctx.fillRect(x - OBSTACLE_HALF_W, botStart, w, 6); // rim
+    ctx.fillRect(x - 3, botStart - wick, 6, wick); // wick
+    ctx.strokeStyle = body;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - OBSTACLE_HALF_W + 1, botStart + 1, w - 2, WORLD_H - botStart - 2);
+  }
 
-  // top pillar (inverted)
-  ctx.fillStyle = dim;
-  ctx.fillRect(x - OBSTACLE_HALF_W, 0, w, topEnd);
-  ctx.fillStyle = body;
-  ctx.fillRect(x - OBSTACLE_HALF_W, topEnd - 6, w, 6);
-  ctx.fillRect(x - 3, topEnd, 6, wick);
-  ctx.strokeStyle = body;
-  ctx.strokeRect(x - OBSTACLE_HALF_W + 1, 1, w - 2, topEnd - 2);
+  // top pillar (inverted) — same guard when the gap reaches the ceiling
+  if (topEnd > 2) {
+    ctx.fillStyle = dim;
+    ctx.fillRect(x - OBSTACLE_HALF_W, 0, w, topEnd);
+    ctx.fillStyle = body;
+    ctx.fillRect(x - OBSTACLE_HALF_W, Math.max(0, topEnd - 6), w, Math.min(6, topEnd));
+    ctx.fillRect(x - 3, topEnd, 6, wick);
+    ctx.strokeStyle = body;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - OBSTACLE_HALF_W + 1, 1, w - 2, topEnd - 2);
+  }
 }
 
-export function makeBullSprite(): HTMLCanvasElement {
+export function makeBullSprite(res = 1): HTMLCanvasElement {
   const size = 128;
   const c = document.createElement('canvas');
-  c.width = c.height = size;
+  c.width = c.height = size * res;
   const ctx = c.getContext('2d')!;
+  ctx.scale(res, res);
   const m = size / 2;
-  const HIDE = '#e0a832'; // main coat
-  const HIDE_DARK = '#9c6a16'; // shading / muzzle
-  const OUTLINE = '#241703';
+  const HIDE = '#b05f35'; // main coat — chestnut
+  const HIDE_DARK = '#733a1c'; // shading / muzzle
+  const OUTLINE = '#1d0f06';
   const HORN = '#f2ead8';
   const HORN_DARK = '#c9bda1';
 
@@ -323,7 +344,7 @@ export function makeBullSprite(): HTMLCanvasElement {
     ctx.quadraticCurveTo(m - 15, m - 1, m - 24, m - 8);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#0b0e14';
+    ctx.fillStyle = '#07090f';
     ctx.beginPath();
     ctx.arc(m - 13, m - 6.5, 3.6, 0, Math.PI * 2);
     ctx.fill();
@@ -341,7 +362,7 @@ export function makeBullSprite(): HTMLCanvasElement {
   ctx.lineWidth = 2.5;
   ctx.stroke();
   // nostrils: big angled flares
-  ctx.fillStyle = '#1c1202';
+  ctx.fillStyle = '#160a03';
   ctx.beginPath();
   ctx.ellipse(m - 12, m + 23, 5, 7, -0.5, 0, Math.PI * 2);
   ctx.fill();
@@ -349,7 +370,7 @@ export function makeBullSprite(): HTMLCanvasElement {
   ctx.ellipse(m + 12, m + 23, 5, 7, 0.5, 0, Math.PI * 2);
   ctx.fill();
   // mouth: flat grim line
-  ctx.strokeStyle = '#1c1202';
+  ctx.strokeStyle = '#160a03';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(m - 7, m + 37);
@@ -370,6 +391,137 @@ export function makeBullSprite(): HTMLCanvasElement {
   ctx.fill();
   ctx.beginPath();
   ctx.arc(m + 32, m + 34, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  return c;
+}
+
+export function makeBearSprite(res = 1): HTMLCanvasElement {
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size * res;
+  const ctx = c.getContext('2d')!;
+  ctx.scale(res, res);
+  const m = size / 2;
+  const COAT = '#6f6157'; // grizzled taupe
+  const COAT_DARK = '#463b33';
+  const MUZZLE = '#a8937f';
+  const OUTLINE = '#171009';
+
+  // --- ears: round, set wide and high
+  const ear = (sx: number) => {
+    ctx.save();
+    if (sx < 0) { ctx.translate(size, 0); ctx.scale(-1, 1); }
+    ctx.fillStyle = COAT;
+    ctx.beginPath();
+    ctx.arc(m - 30, m - 32, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = COAT_DARK;
+    ctx.beginPath();
+    ctx.arc(m - 29, m - 31, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+  ear(1);
+  ear(-1);
+
+  // --- head: broad and heavy, wide cheeks, blunt jaw
+  ctx.fillStyle = COAT;
+  ctx.beginPath();
+  ctx.moveTo(m - 34, m - 22);
+  ctx.quadraticCurveTo(m, m - 40, m + 34, m - 22); // heavy crown
+  ctx.quadraticCurveTo(m + 44, m + 6, m + 30, m + 32); // right cheek
+  ctx.quadraticCurveTo(m + 16, m + 46, m, m + 46); // jaw
+  ctx.quadraticCurveTo(m - 16, m + 46, m - 30, m + 32);
+  ctx.quadraticCurveTo(m - 44, m + 6, m - 34, m - 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // --- fur ruff: rough tuft on the forehead
+  ctx.fillStyle = COAT_DARK;
+  ctx.beginPath();
+  ctx.moveTo(m - 14, m - 32);
+  ctx.quadraticCurveTo(m, m - 40, m + 14, m - 32);
+  ctx.quadraticCurveTo(m + 6, m - 25, m, m - 26);
+  ctx.quadraticCurveTo(m - 6, m - 25, m - 14, m - 32);
+  ctx.closePath();
+  ctx.fill();
+
+  // --- brow: heavy dark V, same fierce line as the bull
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(m - 26, m - 18);
+  ctx.lineTo(m - 6, m - 8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(m + 26, m - 18);
+  ctx.lineTo(m + 6, m - 8);
+  ctx.stroke();
+
+  // --- eyes: narrowed slits glaring from under the brow
+  const eye = (sx: number) => {
+    ctx.save();
+    if (sx < 0) { ctx.translate(size, 0); ctx.scale(-1, 1); }
+    ctx.fillStyle = WHITE;
+    ctx.beginPath();
+    ctx.moveTo(m - 24, m - 6);
+    ctx.quadraticCurveTo(m - 15, m - 10, m - 7, m - 3);
+    ctx.quadraticCurveTo(m - 15, m + 1, m - 24, m - 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#0a0b13';
+    ctx.beginPath();
+    ctx.arc(m - 13, m - 4.5, 3.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+  eye(1);
+  eye(-1);
+
+  // --- muzzle: lighter patch with a big bear nose and a snarl
+  ctx.fillStyle = MUZZLE;
+  ctx.beginPath();
+  ctx.ellipse(m, m + 26, 22, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  // nose: wide rounded triangle
+  ctx.fillStyle = '#171009';
+  ctx.beginPath();
+  ctx.moveTo(m - 9, m + 18);
+  ctx.lineTo(m + 9, m + 18);
+  ctx.quadraticCurveTo(m + 7, m + 27, m, m + 28);
+  ctx.quadraticCurveTo(m - 7, m + 27, m - 9, m + 18);
+  ctx.closePath();
+  ctx.fill();
+  // snarl: grim mouth with two bared fangs
+  ctx.strokeStyle = '#171009';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(m - 10, m + 36);
+  ctx.lineTo(m + 10, m + 36);
+  ctx.stroke();
+  ctx.fillStyle = WHITE;
+  ctx.beginPath();
+  ctx.moveTo(m - 9, m + 36);
+  ctx.lineTo(m - 5, m + 36);
+  ctx.lineTo(m - 7, m + 42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(m + 5, m + 36);
+  ctx.lineTo(m + 9, m + 36);
+  ctx.lineTo(m + 7, m + 42);
+  ctx.closePath();
   ctx.fill();
 
   return c;

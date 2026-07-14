@@ -7,14 +7,21 @@ export interface DeathInfo {
   survivedAll: boolean;
 }
 
+const ICON_BACK =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+const ICON_SOUND =
+  '<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const ICON_MUTED =
+  '<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 export function createHud(root: HTMLElement) {
   const el = document.createElement('div');
   el.className = 'hud idle';
   el.innerHTML = `
     <div class="hud-top">
       <span class="hud-left">
-        <button class="hud-btn hud-back" aria-label="Back to stock list">‹</button>
-        <button class="hud-btn hud-mute" aria-label="Toggle sound">🔊</button>
+        <button class="hud-btn hud-back" aria-label="Back to stock list">${ICON_BACK}</button>
+        <button class="hud-btn hud-mute" aria-label="Toggle sound">${ICON_SOUND}</button>
         <span class="hud-stock"></span>
       </span>
       <span class="hud-score">0</span>
@@ -63,7 +70,7 @@ export function createHud(root: HTMLElement) {
       datePx.textContent = price;
     },
     setIdle(idle: boolean) { el.classList.toggle('idle', idle); },
-    setMuted(m: boolean) { muteBtn.textContent = m ? '🔇' : '🔊'; },
+    setMuted(m: boolean) { muteBtn.innerHTML = m ? ICON_MUTED : ICON_SOUND; },
     onBack(fn: () => void) { backFn = fn; },
     onMute(fn: () => void) { muteFn = fn; },
     showReady() { ready.classList.remove('hidden'); death.classList.add('hidden'); },

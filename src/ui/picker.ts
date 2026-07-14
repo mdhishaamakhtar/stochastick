@@ -20,8 +20,8 @@ export function createPicker(
     <div class="picker-head">
       <h1 class="logo">
         <svg class="logo-mark" width="30" height="44" viewBox="0 0 30 44" fill="none" aria-hidden="true">
-          <line x1="15" y1="0" x2="15" y2="44" stroke="#f5b83d" stroke-width="3"/>
-          <rect x="5" y="10" width="20" height="24" rx="3" fill="#f5b83d"/>
+          <line x1="15" y1="0" x2="15" y2="44" stroke="#22d68e" stroke-width="3"/>
+          <rect x="5" y="10" width="20" height="24" rx="3" fill="#22d68e"/>
         </svg>
         <span>STOCHAST<span class="logo-tick">ICK</span></span>
       </h1>
@@ -54,13 +54,16 @@ export function createPicker(
   }
 
   function drawSpark(canvas: HTMLCanvasElement, spark: number[]) {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const dpr = Math.min(devicePixelRatio || 1, 3);
     canvas.width = 60 * dpr; canvas.height = 24 * dpr;
+    canvas.style.width = '60px'; canvas.style.height = '24px';
     const ctx = canvas.getContext('2d')!;
     ctx.scale(dpr, dpr);
     const up = (spark[spark.length - 1] ?? 0) >= (spark[0] ?? 0);
-    ctx.strokeStyle = up ? '#22c58b' : '#f0505a';
+    ctx.strokeStyle = up ? '#22d68e' : '#ff5964';
     ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.beginPath();
     spark.forEach((v, i) => {
       const x = (i / (spark.length - 1 || 1)) * 58 + 1;
@@ -85,7 +88,9 @@ export function createPicker(
         <span class="stock-best">${best > 0 ? `★ ${best}` : ''}</span>
       `;
       drawSpark(row.querySelector('canvas')!, s.spark);
-      row.onclick = () => { hide(); onPick(s, tf); };
+      // Stay visible while candles load; main.ts hides the picker once the
+      // new round is actually ready (prevents a stale-frame flash).
+      row.onclick = () => { row.classList.add('loading'); onPick(s, tf); };
       list.appendChild(row);
     }
     if (!list.hasChildNodes()) {
