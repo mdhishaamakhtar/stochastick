@@ -17,6 +17,8 @@ const ICON_MUTED =
   '<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const ICON_SHARE =
   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.7 10.6l6.6-4.2M8.7 13.4l6.6 4.2"/></svg>';
+const ICON_COPY =
+  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 
 export function createHud(root: HTMLElement) {
   const el = document.createElement('div');
@@ -43,7 +45,10 @@ export function createHud(root: HTMLElement) {
           <button class="btn btn-primary btn-retry">Retry</button>
           <button class="btn btn-change">Change stock</button>
         </div>
-        <button class="btn btn-share">${ICON_SHARE}<span>Share score</span></button>
+        <div class="death-buttons death-share-row">
+          <button class="btn btn-share">${ICON_SHARE}<span>Share score</span></button>
+          <button class="btn btn-copy">${ICON_COPY}<span>Copy</span></button>
+        </div>
       </div>
     </div>
   `;
@@ -59,9 +64,11 @@ export function createHud(root: HTMLElement) {
   let backFn = () => {};
   let muteFn = () => {};
   let shareFn = () => {};
+  let copyFn = () => {};
   q<HTMLButtonElement>('.btn-retry').onclick = (e) => { e.stopPropagation(); restartFn(); };
   q<HTMLButtonElement>('.btn-change').onclick = (e) => { e.stopPropagation(); changeFn(); };
   q<HTMLButtonElement>('.btn-share').onclick = (e) => { e.stopPropagation(); shareFn(); };
+  q<HTMLButtonElement>('.btn-copy').onclick = (e) => { e.stopPropagation(); copyFn(); };
   let fighterFn = () => {};
   const backBtn = q<HTMLButtonElement>('.hud-back');
   const muteBtn = q<HTMLButtonElement>('.hud-mute');
@@ -112,6 +119,8 @@ export function createHud(root: HTMLElement) {
     onRestart(fn: () => void) { restartFn = fn; },
     onChangeStock(fn: () => void) { changeFn = fn; },
     onShare(fn: () => void) { shareFn = fn; },
+    onCopy(fn: () => void) { copyFn = fn; },
+    setCopyVisible(v: boolean) { q('.btn-copy').classList.toggle('hidden', !v); },
     setSharing(busy: boolean) {
       const b = q<HTMLButtonElement>('.btn-share');
       b.disabled = busy;

@@ -117,6 +117,21 @@ export async function buildShareCard(info: ShareInfo): Promise<HTMLCanvasElement
   return c;
 }
 
+export function canCopyImage(): boolean {
+  return typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write;
+}
+
+// Must be called synchronously from the click handler: Safari only allows
+// clipboard writes inside a user gesture, so the ClipboardItem is created
+// immediately and the still-rendering card is handed over as a promise.
+export function copyScore(info: ShareInfo): Promise<void> {
+  const blob = buildShareCard(info).then(
+    (c) => new Promise<Blob>((res, rej) =>
+      c.toBlob((b) => (b ? res(b) : rej(new Error('canvas export failed'))), 'image/png')),
+  );
+  return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+}
+
 export type ShareOutcome = 'shared' | 'cancelled' | 'downloaded';
 
 export async function shareScore(info: ShareInfo): Promise<ShareOutcome> {
@@ -125,11 +140,12 @@ export async function shareScore(info: ShareInfo): Promise<ShareOutcome> {
   if (!blob) throw new Error('canvas export failed');
   const file = new File([blob], 'stochastick-score.png', { type: 'image/png' });
 
-  // Image only — no text alongside the file. Share targets that prefer text
-  // (Slack most notably) silently drop the attached file when both are sent.
+  // The file must be the ONLY item in the payload. Any text item — including
+  // `title`, which iOS vends to the share sheet as text — makes Slack's share
+  // extension take the text and silently drop the image.
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Stochastick' });
+      await navigator.share({ files: [file] });
       return 'shared';
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
