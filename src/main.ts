@@ -10,6 +10,7 @@ import { createPicker } from './ui/picker.ts';
 import { createHud } from './ui/hud.ts';
 import { createLanding } from './ui/landing.ts';
 import { getBest, setBest, getFighter, setFighter } from './ui/storage.ts';
+import { shareScore, type ShareInfo } from './ui/share.ts';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const uiRoot = document.querySelector<HTMLElement>('#ui')!;
@@ -22,10 +23,10 @@ fitCanvas();
 window.addEventListener('resize', fitCanvas);
 
 let toastTimer = 0;
-function showToast(msg: string) {
+function showToast(msg: string, ok = false) {
   document.querySelector('.toast')?.remove();
   const t = document.createElement('div');
-  t.className = 'toast';
+  t.className = ok ? 'toast ok' : 'toast';
   t.setAttribute('role', 'alert');
   t.textContent = msg;
   uiRoot.appendChild(t);
@@ -159,15 +160,35 @@ async function boot() {
       : '';
     audio.sfxDeath();
     if (isNewBest || survivedAll) audio.sfxBest();
-    hud.showDeath({
+    const info = {
       score: g.score,
       best: Math.max(prevBest, g.score),
       isNewBest,
       dateLabel,
       price: at ? at.candle.c : null,
       survivedAll,
-    });
+    };
+    lastRun = { ...info, fighter: getFighter(), stockLabel: `${stock.symbol} · ${TF_LABELS[tf]}` };
+    hud.showDeath(info);
   }
+
+  let lastRun: ShareInfo | null = null;
+  let sharing = false;
+  hud.onShare(async () => {
+    if (!lastRun || sharing) return;
+    sharing = true;
+    hud.setSharing(true);
+    try {
+      const outcome = await shareScore(lastRun);
+      if (outcome === 'copied') showToast('Score card saved — caption copied to clipboard', true);
+      else if (outcome === 'downloaded') showToast('Score card saved to your downloads', true);
+    } catch {
+      showToast("Couldn't create the share image — try again");
+    } finally {
+      sharing = false;
+      hud.setSharing(false);
+    }
+  });
 
   hud.onRestart(() => startRound());
   hud.onChangeStock(() => history.back());

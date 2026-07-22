@@ -15,6 +15,8 @@ const ICON_SOUND =
   '<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const ICON_MUTED =
   '<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const ICON_SHARE =
+  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.7 10.6l6.6-4.2M8.7 13.4l6.6 4.2"/></svg>';
 
 export function createHud(root: HTMLElement) {
   const el = document.createElement('div');
@@ -41,6 +43,7 @@ export function createHud(root: HTMLElement) {
           <button class="btn btn-primary btn-retry">Retry</button>
           <button class="btn btn-change">Change stock</button>
         </div>
+        <button class="btn btn-share">${ICON_SHARE}<span>Share score</span></button>
       </div>
     </div>
   `;
@@ -55,8 +58,10 @@ export function createHud(root: HTMLElement) {
   let changeFn = () => {};
   let backFn = () => {};
   let muteFn = () => {};
+  let shareFn = () => {};
   q<HTMLButtonElement>('.btn-retry').onclick = (e) => { e.stopPropagation(); restartFn(); };
   q<HTMLButtonElement>('.btn-change').onclick = (e) => { e.stopPropagation(); changeFn(); };
+  q<HTMLButtonElement>('.btn-share').onclick = (e) => { e.stopPropagation(); shareFn(); };
   let fighterFn = () => {};
   const backBtn = q<HTMLButtonElement>('.hud-back');
   const muteBtn = q<HTMLButtonElement>('.hud-mute');
@@ -106,5 +111,11 @@ export function createHud(root: HTMLElement) {
     hideOverlays() { ready.classList.add('hidden'); death.classList.add('hidden'); },
     onRestart(fn: () => void) { restartFn = fn; },
     onChangeStock(fn: () => void) { changeFn = fn; },
+    onShare(fn: () => void) { shareFn = fn; },
+    setSharing(busy: boolean) {
+      const b = q<HTMLButtonElement>('.btn-share');
+      b.disabled = busy;
+      b.querySelector('span')!.textContent = busy ? 'Rendering…' : 'Share score';
+    },
   };
 }

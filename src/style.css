@@ -298,10 +298,11 @@ body {
   0% { transform: scale(0.6); opacity: 0; }
   60% { transform: scale(1.15); }
 }
-.death-buttons { display: flex; gap: 10px; margin-top: 12px; }
+.death-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .btn {
   flex: 1; min-height: 48px; border-radius: 10px; cursor: pointer;
-  font-family: var(--font-ui); font-weight: 700; font-size: var(--text-sm);
+  padding: 0 12px; white-space: nowrap;
+  font-family: var(--font-ui); font-weight: 700; font-size: var(--text-xs);
   letter-spacing: var(--track-caps); text-transform: uppercase;
   border: 1px solid var(--line-bright); background: var(--bg); color: var(--text);
   transition: border-color 150ms var(--ease-out), filter 150ms var(--ease-out), transform 100ms var(--ease-out);
@@ -310,6 +311,12 @@ body {
 .btn:active { transform: scale(0.98); }
 .btn-primary { background: var(--violet); border-color: var(--violet); color: var(--violet-ink); }
 .btn-primary:hover { filter: brightness(1.08); }
+.btn-share {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: var(--violet); border-color: var(--line-bright);
+}
+.btn-share svg { flex: none; }
+.btn-share:disabled { opacity: 0.55; cursor: wait; }
 
 /* ---------- Toast ---------- */
 .toast {
@@ -323,6 +330,7 @@ body {
   box-shadow: var(--shadow-raise);
   animation: toast-in 220ms var(--ease-out);
 }
+.toast.ok { border-color: var(--violet); }
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
 }
