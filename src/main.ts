@@ -10,7 +10,7 @@ import { createPicker } from './ui/picker.ts';
 import { createHud } from './ui/hud.ts';
 import { createLanding } from './ui/landing.ts';
 import { getBest, setBest, getFighter, setFighter } from './ui/storage.ts';
-import { shareScore, type ShareInfo } from './ui/share.ts';
+import { shareScore, copyScore, canCopyImage, type ShareInfo } from './ui/share.ts';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const uiRoot = document.querySelector<HTMLElement>('#ui')!;
@@ -187,6 +187,14 @@ async function boot() {
       sharing = false;
       hud.setSharing(false);
     }
+  });
+  hud.setCopyVisible(canCopyImage());
+  hud.onCopy(() => {
+    if (!lastRun) return;
+    // no await before the clipboard write — Safari requires it in the gesture
+    copyScore(lastRun)
+      .then(() => showToast('Score card copied — paste it in any chat', true))
+      .catch(() => showToast("Couldn't copy the image — try Share instead"));
   });
 
   hud.onRestart(() => startRound());

@@ -311,11 +311,13 @@ body {
 .btn:active { transform: scale(0.98); }
 .btn-primary { background: var(--violet); border-color: var(--violet); color: var(--violet-ink); }
 .btn-primary:hover { filter: brightness(1.08); }
-.btn-share {
+.death-share-row { margin-top: 0; }
+.btn-share, .btn-copy {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   color: var(--violet); border-color: var(--line-bright);
 }
-.btn-share svg { flex: none; }
+.btn-share { flex: 1.6 1 auto; }
+.btn-share svg, .btn-copy svg { flex: none; }
 .btn-share:disabled { opacity: 0.55; cursor: wait; }
 
 /* ---------- Toast ---------- */
