@@ -180,8 +180,7 @@ async function boot() {
     hud.setSharing(true);
     try {
       const outcome = await shareScore(lastRun);
-      if (outcome === 'copied') showToast('Score card saved — caption copied to clipboard', true);
-      else if (outcome === 'downloaded') showToast('Score card saved to your downloads', true);
+      if (outcome === 'downloaded') showToast('Score card saved to your downloads', true);
     } catch {
       showToast("Couldn't create the share image — try again");
     } finally {

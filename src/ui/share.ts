@@ -17,14 +17,6 @@ const VIOLET = '#8f7bff';
 const GREEN = '#22d68e';
 const RED = '#ff5964';
 
-function shareText(info: ShareInfo): string {
-  const fighter = info.fighter.toUpperCase();
-  const head = info.survivedAll
-    ? `I survived the entire ${info.stockLabel} chart as the ${fighter} on Stochastick 🏆`
-    : `I scored ${info.score} flying the ${fighter} through ${info.stockLabel} on Stochastick 📈`;
-  return `${head} Can you beat it? https://${SITE}`;
-}
-
 // One obstacle column pair, same construction as the game / og-image.
 function candlePair(x: CanvasRenderingContext2D, h: number, cx: number, gapTop: number, gapBot: number, up: boolean) {
   const body = up ? GREEN : RED;
@@ -125,18 +117,19 @@ export async function buildShareCard(info: ShareInfo): Promise<HTMLCanvasElement
   return c;
 }
 
-export type ShareOutcome = 'shared' | 'cancelled' | 'copied' | 'downloaded';
+export type ShareOutcome = 'shared' | 'cancelled' | 'downloaded';
 
 export async function shareScore(info: ShareInfo): Promise<ShareOutcome> {
   const canvas = await buildShareCard(info);
   const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
   if (!blob) throw new Error('canvas export failed');
   const file = new File([blob], 'stochastick-score.png', { type: 'image/png' });
-  const text = shareText(info);
 
+  // Image only — no text alongside the file. Share targets that prefer text
+  // (Slack most notably) silently drop the attached file when both are sent.
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], text, title: 'Stochastick' });
+      await navigator.share({ files: [file], title: 'Stochastick' });
       return 'shared';
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
@@ -150,10 +143,5 @@ export async function shareScore(info: ShareInfo): Promise<ShareOutcome> {
   a.download = 'stochastick-score.png';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  try {
-    await navigator.clipboard.writeText(text);
-    return 'copied';
-  } catch {
-    return 'downloaded';
-  }
+  return 'downloaded';
 }
