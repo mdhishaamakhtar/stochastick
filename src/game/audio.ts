@@ -1,78 +1,115 @@
 /**
- * Tiny synthesized SFX engine — WebAudio only, zero assets.
- * All sounds are short envelope-shaped oscillator sweeps, volume-capped low.
+ * Synthesized SFX, WebAudio only. Soft by design: a breathy flap, a bell
+ * that climbs a pentatonic scale as the score rises, a low thud on death.
  */
-
-const KEY = 'stochastick.muted';
+import { getMuted, setMuted } from '../lib/storage.ts';
 
 let ctx: AudioContext | null = null;
-let muted = (() => {
-  try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
-})();
+let master: GainNode | null = null;
+let noise: AudioBuffer | null = null;
+let muted = getMuted();
 
-export function isMuted(): boolean {
-  return muted;
-}
-
+export const isMuted = (): boolean => muted;
 export function toggleMute(): boolean {
   muted = !muted;
-  try { localStorage.setItem(KEY, muted ? '1' : '0'); } catch { /* private mode */ }
+  setMuted(muted);
   return muted;
 }
 
-/** Create/resume the AudioContext. Must be called from a user gesture. */
+/** Create/resume the context; must run inside a user gesture. */
 export function unlock(): void {
   try {
-    ctx ??= new AudioContext();
+    if (!ctx) {
+      ctx = new AudioContext();
+      master = ctx.createGain();
+      master.gain.value = 0.8;
+      master.connect(ctx.destination);
+      noise = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
     if (ctx.state === 'suspended') void ctx.resume();
   } catch { ctx = null; }
 }
 
-function tone(
-  type: OscillatorType,
-  f0: number, f1: number,
-  dur: number, vol: number,
-  delay = 0,
-): void {
-  if (muted || !ctx || ctx.state !== 'running') return;
-  const t = ctx.currentTime + delay;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(f0, t);
-  osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
-  gain.gain.setValueAtTime(vol, t);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + dur + 0.02);
+const ready = (): boolean => !muted && !!ctx && ctx.state === 'running';
+
+function bell(freq: number, at: number, vol: number, dur: number): void {
+  const c = ctx!;
+  for (const [mult, v] of [[1, vol], [2.01, vol * 0.25]] as const) {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq * mult;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(v, at + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(master!);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
 }
 
-/** Wing beat: soft downward whoosh. */
 export function sfxFlap(): void {
-  tone('triangle', 340, 160, 0.09, 0.1);
+  if (!ready()) return;
+  const c = ctx!, t = c.currentTime;
+  const src = c.createBufferSource();
+  src.buffer = noise;
+  const f = c.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = 0.9;
+  f.frequency.setValueAtTime(1400, t);
+  f.frequency.exponentialRampToValueAtTime(420, t + 0.12);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.14, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  src.connect(f).connect(g).connect(master!);
+  src.start(t);
+  src.stop(t + 0.16);
 }
 
-/** Candle cleared: bright little coin blip. */
-export function sfxScore(): void {
-  tone('square', 740, 740, 0.05, 0.05);
-  tone('square', 1180, 1180, 0.07, 0.05, 0.05);
+const SCALE = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51];
+export function sfxScore(score: number): void {
+  if (!ready()) return;
+  bell(SCALE[score % SCALE.length]!, ctx!.currentTime, 0.05, 0.45);
 }
 
-/** Rekt: falling buzz with a thud underneath. */
 export function sfxDeath(): void {
-  tone('sawtooth', 260, 48, 0.4, 0.14);
-  tone('sine', 110, 40, 0.35, 0.18);
+  if (!ready()) return;
+  const c = ctx!, t = c.currentTime;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(180, t);
+  o.frequency.exponentialRampToValueAtTime(42, t + 0.5);
+  g.gain.setValueAtTime(0.32, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  o.connect(g).connect(master!);
+  o.start(t);
+  o.stop(t + 0.6);
+  const src = c.createBufferSource();
+  src.buffer = noise;
+  const f = c.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 600;
+  const ng = c.createGain();
+  ng.gain.setValueAtTime(0.25, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  src.connect(f).connect(ng).connect(master!);
+  src.start(t);
+  src.stop(t + 0.3);
 }
 
-/** New best: rising three-note arpeggio. */
 export function sfxBest(): void {
-  tone('triangle', 523, 523, 0.09, 0.08);
-  tone('triangle', 659, 659, 0.09, 0.08, 0.09);
-  tone('triangle', 1047, 1047, 0.16, 0.08, 0.18);
+  if (!ready()) return;
+  const t = ctx!.currentTime + 0.25;
+  [659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => bell(f, t + i * 0.09, 0.05, 0.6));
 }
 
-/** Round begins. */
 export function sfxStart(): void {
-  tone('triangle', 440, 700, 0.1, 0.07);
+  if (!ready()) return;
+  const t = ctx!.currentTime;
+  bell(392, t, 0.04, 0.5);
+  bell(587.33, t + 0.08, 0.04, 0.6);
 }

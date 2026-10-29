@@ -6,7 +6,7 @@
 
 ## Stochastick
 
-Flappy Bird played on real Indian stock market candlestick charts. Pick a stock, pick a timeframe, survive the chart.
+Flappy Bird played on real Indian stock market candlestick charts, at dusk. Pick a stock, pick a timeframe, survive the chart.
 
 **Play it: [stochastick.hishaam.dev](https://stochastick.hishaam.dev)**
 
@@ -14,17 +14,20 @@ No backend, no accounts, no API keys at runtime — a fully static site that shi
 
 ## What It Does
 
-- Choose your fighter — the bull rides the rally, the bear outlives the crash
-- Pick any of ~54 NSE instruments (Nifty 50 constituents + NIFTY 50, BANK NIFTY, SENSEX) and a timeframe — 15m, 1h, Daily, or Weekly
-- The stock's real price history becomes the level, played chronologically left to right
-- Each candle turns into an obstacle pair — one rising from the floor, an inverted mirror hanging from the ceiling — the gap tracks the candle's close price
-- Classic Flappy Bird physics — gravity, one fixed impulse per flap, terminal fall speed
-- +1 point per candle survived; crash and it's over — the death screen shows the actual date you got rekt on and the price
-- Best scores kept per stock × timeframe in `localStorage`
+- Fly a bull or a bear through any of 54 NSE instruments (Nifty 50 constituents + NIFTY 50, BANK NIFTY, SENSEX) on 15m, 1h, Daily or Weekly candles
+- The stock's real price history is the level: each candle is a pair of monoliths, the gap tracks the close, and the gap-facing ends show the candle's real body and wicks in green or red
+- The sky follows the market: a rally lifts the sun toward golden hour, a sell-off sinks it toward night
+- A strip at the bottom shows the whole chart and where you are in it
+- Fair on every screen: a phone sees at least as much of the chart ahead as anyone else, and far candles dissolve into haze on wide screens
+- Crash and the card shows the real date you got rekt, the price move over your run, and your best; share it as an image
+- The landing page runs an autopilot through real NIFTY 50 history behind the title
+- Best scores are kept per stock × timeframe in `localStorage`
 
 ## Tech Stack
 
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://svelte.dev/)
+[![WebGL](https://img.shields.io/badge/WebGL-2-990000?style=for-the-badge&logo=webgl&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vitest](https://img.shields.io/badge/Vitest-4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Canvas](https://img.shields.io/badge/Canvas-2D-FDE047?style=for-the-badge&logo=html5&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
@@ -49,13 +52,15 @@ npm run build        # tsc --noEmit && vite build -> dist/
 npm run fetch-data   # re-pull candle data from Yahoo Finance -> public/data/*.bin + manifest.json
 ```
 
-The production build is tiny — under 12 kB gzipped for the entire app shell (`19.55 kB JS (7.61 kB gzip)` + `10.72 kB CSS (2.90 kB gzip)` + 1.28 kB HTML).
+The production build is about 37 kB gzipped of JS plus 4 kB of CSS; fonts are self-hosted and the market data ships as compact binary files.
 
 ## How It Works
 
-Each candle becomes an obstacle pair: the real candle rising from the floor, an inverted mirror of it hanging from the ceiling. The gap between them tracks the candle's close price, rolling-normalized against its neighbors — so a rally climbs the level and a crash sends the gap diving toward the floor. The chart's actual shape *is* the level.
+Each candle becomes a pair of monoliths: one standing on the horizon, one hanging from the sky. The gap between them tracks the candle's close, rolling-normalized against its neighbours, so a rally climbs the level and a crash sends the gap diving toward the ground. The close-to-close line threads every gap: the chart you are flying.
 
-You play as a fierce bull or a snarling bear (pure Dalal Street energy — pick your side on the landing page). Tap, click, or hit Space to flap through the gaps. Level generation is unit-tested against an invariant: **any** real (or adversarial synthetic) price series produces a completable level — gap size is clamped to a playable range, and no single step exceeds what the flap physics can reach.
+Level generation is unit-tested against an invariant: **any** real (or adversarial synthetic) price series produces a completable level. Gap size is clamped to a playable range, and no single step exceeds what the flap physics can reach.
+
+The look, "Afterglow": a WebGL2 dusk sky (dithered, so the gradient never bands), a skyline built from the stock's own history in layered haze, frosted-glass panels, and three typefaces: Gloock for moments, Hanken Grotesk for interface, Azeret Mono for market data.
 
 ## Scripts
 
@@ -65,31 +70,27 @@ You play as a fierce bull or a snarling bear (pure Dalal Street energy — pick 
 | `npm test` | Run the Vitest unit tests |
 | `npm run build` | Type-check and bundle to `dist/` |
 | `npm run fetch-data` | Re-pull candle data from Yahoo Finance (no API key) |
+| open `/scripts/og-image.html` on the dev server | Re-render `public/og-image.png` from real NIFTY 50 data |
 
 ## Project Structure
 
 ```
 src/
-  data/
-    types.ts        # Candle shape
-    codec.ts        # STK1 binary encode/decode
-    load.ts         # fetch + decode a candle file at runtime
-    manifest.ts     # manifest schema, timeframe list
-  game/
-    physics.ts      # pure fixed-step bird physics (gravity, flap, terminal velocity, rotation)
-    level.ts        # pure: candle array -> obstacle list (normalization, gap placement, difficulty)
-    loop.ts         # RAF loop, fixed-timestep accumulator, interpolation, pause/resume
-    render.ts       # canvas drawing, offscreen sprite cache
-    collision.ts    # bird vs obstacle/floor/ceiling AABB checks
-    state.ts        # menu -> ready -> playing -> dead state machine
-    constants.ts    # tunables
-  ui/
-    picker.ts       # stock/timeframe picker
-    hud.ts          # in-game score HUD
-    storage.ts      # localStorage best-score persistence
-  main.ts          # wiring
+  App.svelte          # screens, routing (landing → picker → game), keyboard, share
+  app.css             # Afterglow tokens: palette, type, sizing system
+  data/               # candle types, STK1 codec, loaders, manifest schema
+  game/               # pure game logic: physics, level, collision, state, loop, autopilot, audio
+  render/
+    sky.ts            # WebGL2 dusk sky shader
+    scene.ts          # Canvas 2D world: skyline, candle monoliths, price line, fighter, particles
+    view.ts           # world → screen mapping (fair look-ahead)
+    fighters.ts       # bull and bear heads, lit for dusk
+    postcard.ts       # share card and OG image
+  lib/                # engine (canvases + clock), app state, formatting, storage
+  ui/                 # Landing, Picker, Hud, DeathCard, FighterToggle, Icon
 scripts/
-  fetch-data.ts    # build-time data pipeline (Yahoo Finance -> public/data/*.bin + manifest.json)
+  fetch-data.ts       # Yahoo Finance → public/data/*.bin + manifest.json (with split/demerger fixes)
+  og-image.html       # dev-only OG image renderer
 ```
 
 ## Data
@@ -97,7 +98,9 @@ scripts/
 Baked at build time, not fetched at runtime. `npm run fetch-data` (`scripts/fetch-data.ts`) pulls OHLC candles from Yahoo Finance's public chart API for the full universe of instruments and every timeframe, then writes:
 
 - `public/data/<SYMBOL>_<TF>.bin` — a compact binary file per stock × timeframe, custom **STK1** format: a 4-byte magic number, a 4-byte candle count, a run of `uint32` timestamps, then a run of `int32` OHLC values in paise (rupees × 100) — about 20 bytes per candle.
-- `public/data/manifest.json` — the stock list with names, index flags, sparkline previews, and per-timeframe candle counts and date ranges, loaded once at startup.
+- `public/data/manifest.json` — the stock list with names, index flags, sparkline previews, last close, 1-month change, and per-timeframe candle counts and date ranges, loaded once at startup.
+
+Yahoo leaves a few corporate actions unadjusted (an intraday split, a demerger); the script rescales the bars before them so the level shows market moves, not mechanical resets.
 
 There's no API key and no server involved; the script just writes static files into `public/`. The shipped data is a frozen snapshot — re-run `npm run fetch-data` to refresh it.
 

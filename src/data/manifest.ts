@@ -16,6 +16,8 @@ export interface StockMeta {
   name: string;
   index?: boolean;
   spark: number[]; // 30 values, 0-99, recent daily closes normalized
+  last?: number; // latest daily close, rupees
+  chg?: number; // % change over the last ~22 trading days
   tfs: Partial<Record<Timeframe, TfMeta>>;
 }
 

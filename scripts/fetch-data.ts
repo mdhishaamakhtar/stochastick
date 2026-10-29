@@ -91,6 +91,38 @@ async function fetchCandles(yahoo: string, tf: Timeframe): Promise<Candle[]> {
   return out;
 }
 
+// Corporate actions Yahoo leaves unadjusted in some series (intraday splits,
+// demergers). Every bar before `at` is rescaled so the level shows market
+// moves, not a mechanical price reset. A no-op where Yahoo already adjusted.
+const CORPORATE_ACTIONS: Record<string, Array<{ at: string; why: string }>> = {
+  BAJFINANCE: [{ at: '2025-06-16', why: '1:2 split + 4:1 bonus' }],
+  TMPV: [{ at: '2025-10-14', why: 'Tata Motors CV demerger' }],
+};
+
+function adjustCorporateActions(symbol: string, candles: Candle[]): Candle[] {
+  for (const { at } of CORPORATE_ACTIONS[symbol] ?? []) {
+    const cut = Date.parse(`${at}T00:00:00+05:30`) / 1000;
+    // The reset shows up as an opening gap, or (on weekly bars that straddle
+    // the date) inside a single bar.
+    const near = candles.map((k, i) => i).filter((i) => i > 0 && Math.abs(candles[i]!.t - cut) < 8 * 86400);
+    const i = near.find((i) => Math.abs(candles[i]!.o / candles[i - 1]!.c - 1) > 0.2)
+      ?? near.find((i) => Math.abs(candles[i]!.c / candles[i]!.o - 1) > 0.2);
+    if (i === undefined) continue; // already adjusted
+    const k = candles[i]!;
+    const gap = k.o / candles[i - 1]!.c;
+    const ratio = Math.abs(gap - 1) > 0.2 ? gap : k.c / k.o;
+    if (Math.abs(gap - 1) <= 0.2) {
+      const o = k.o * ratio;
+      candles[i] = { t: k.t, o, h: Math.max(o, k.c, Math.min(k.h * ratio, k.h)), l: k.l, c: k.c };
+    }
+    for (let j = 0; j < i; j++) {
+      const k = candles[j]!;
+      candles[j] = { t: k.t, o: k.o * ratio, h: k.h * ratio, l: k.l * ratio, c: k.c * ratio };
+    }
+  }
+  return candles;
+}
+
 function sparkline(candles: Candle[]): number[] {
   const closes = candles.slice(-30).map((c) => c.c);
   const min = Math.min(...closes), max = Math.max(...closes);
@@ -106,14 +138,20 @@ async function main() {
     if (stock.index) meta.index = true;
     for (const tf of TIMEFRAMES) {
       try {
-        const candles = await fetchCandles(stock.yahoo, tf);
+        const candles = adjustCorporateActions(stock.symbol, await fetchCandles(stock.yahoo, tf));
         if (candles.length < MIN_CANDLES) {
           console.warn(`skip ${stock.symbol} ${tf}: only ${candles.length} candles`);
           continue;
         }
         writeFileSync(`${OUT}/${fileSymbol(stock.symbol)}_${tf}.bin`, Buffer.from(encodeCandles(candles)));
         meta.tfs[tf] = { n: candles.length, from: candles[0]!.t, to: candles[candles.length - 1]!.t };
-        if (tf === '1d') meta.spark = sparkline(candles);
+        if (tf === '1d') {
+          meta.spark = sparkline(candles);
+          const last = candles[candles.length - 1]!.c;
+          const monthAgo = candles[Math.max(0, candles.length - 22)]!.c;
+          meta.last = Math.round(last * 100) / 100;
+          meta.chg = Math.round((last / monthAgo - 1) * 10000) / 100;
+        }
         console.log(`ok ${stock.symbol} ${tf}: ${candles.length} candles`);
       } catch (e) {
         console.warn(`skip ${stock.symbol} ${tf}: ${(e as Error).message}`);

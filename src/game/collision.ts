@@ -12,13 +12,14 @@ export function hitsObstacle(birdY: number, scrollX: number, ob: Obstacle): bool
   const bx = BIRD_X + scrollX;
   const x0 = ob.x - OBSTACLE_HALF_W, x1 = ob.x + OBSTACLE_HALF_W;
   return (
-    circleRect(bx, birdY, BIRD_R, x0, 0, x1, ob.gapCenter - ob.gapHalf) ||
+    circleRect(bx, birdY, BIRD_R, x0, -1e6, x1, ob.gapCenter - ob.gapHalf) ||
     circleRect(bx, birdY, BIRD_R, x0, ob.gapCenter + ob.gapHalf, x1, WORLD_H)
   );
 }
 
-export function hitsBounds(birdY: number): boolean {
-  return birdY - BIRD_R <= 0 || birdY + BIRD_R >= WORLD_H;
+/** Only the ground kills; above the world the bird is held at CEILING. */
+export function hitsGround(birdY: number): boolean {
+  return birdY + BIRD_R >= WORLD_H;
 }
 
 export function passedObstacle(scrollX: number, ob: Obstacle): boolean {

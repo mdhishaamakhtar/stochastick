@@ -1,0 +1,147 @@
+/* ---------- Fonts (self-hosted, latin) ---------- */
+@font-face { font-family: 'Gloock'; font-weight: 400; font-display: swap; src: url('/fonts/gloock-400.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-weight: 400; font-display: swap; src: url('/fonts/hanken-400.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-weight: 500; font-display: swap; src: url('/fonts/hanken-500.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-weight: 600; font-display: swap; src: url('/fonts/hanken-600.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-weight: 700; font-display: swap; src: url('/fonts/hanken-700.woff2') format('woff2'); }
+@font-face { font-family: 'Azeret Mono'; font-weight: 400; font-display: swap; src: url('/fonts/azeret-400.woff2') format('woff2'); }
+@font-face { font-family: 'Azeret Mono'; font-weight: 500; font-display: swap; src: url('/fonts/azeret-500.woff2') format('woff2'); }
+@font-face { font-family: 'Azeret Mono'; font-weight: 600; font-display: swap; src: url('/fonts/azeret-600.woff2') format('woff2'); }
+
+/* ---------- Afterglow ----------
+   The page is a dusk sky. Everything else is frosted plum glass laid over it,
+   cream type, and the sun's warm rim. Jade and coral only ever mean up and
+   down. Three voices: Gloock for the moments (wordmark, score, titles),
+   Hanken Grotesk for interface, Azeret Mono for market data. */
+:root {
+  --ink: #0c0920;
+  --plum-950: #120a1c;
+  --plum-900: #1c0f28;
+  --plum-800: #2a1236;
+  --cream: #fff3e6;
+  --cream-2: rgba(255, 238, 226, 0.8);
+  --cream-3: rgba(255, 238, 226, 0.62);
+  --rim: #ffb28c;
+  --jade: #8ff0c4;
+  --coral: #ff9d8f;
+
+  --glass: rgba(28, 12, 40, 0.46);
+  --glass-strong: rgba(22, 9, 32, 0.64);
+  --glass-hover: rgba(255, 238, 226, 0.08);
+  --glass-press: rgba(255, 238, 226, 0.14);
+  --line: rgba(255, 226, 210, 0.16);
+  --line-2: rgba(255, 226, 210, 0.3);
+  --frost: blur(22px) saturate(150%);
+
+  --font-display: 'Gloock', Georgia, serif;
+  --font-ui: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-data: 'Azeret Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Sizing system. Every floating surface is a panel; every control is one
+     of three heights; corners follow what they sit in. */
+  --w-panel: 400px;       /* landing panel, game strip, death card, toast */
+  --w-sheet: 560px;       /* the chart picker on wide screens */
+  --pad: 16px;            /* inside every panel */
+  --gap: 12px;            /* between blocks inside a panel */
+  --h-primary: 56px;      /* the one main action */
+  --h-control: 48px;      /* secondary buttons, inputs, segmented tracks */
+  --h-icon: 44px;         /* round icon buttons and header pills */
+  --r-panel: 28px;
+  --r-control: 16px;
+  --r-inner: 12px;        /* items inside a 4px-padded track: r-control − 4 */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow: 0 24px 60px rgba(12, 4, 20, 0.45);
+  --gutter: max(16px, env(safe-area-inset-left));
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: #1d1442;
+  color: var(--cream);
+  font-family: var(--font-ui);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; touch-action: manipulation; }
+input { font: inherit; color: inherit; }
+::selection { background: rgba(255, 178, 140, 0.38); color: var(--cream); }
+:focus-visible { outline: 2px solid var(--rim); outline-offset: 3px; }
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 226, 210, 0.22) transparent; }
+
+/* ---------- Stage ---------- */
+.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.scene { touch-action: none; user-select: none; -webkit-user-select: none; }
+.sky-fallback { background: linear-gradient(180deg, #18123c 0%, #3a2470 34%, #8a3f80 60%, #e0786f 83%, #ffc99a 100%); }
+.ui { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+.ui > * { pointer-events: auto; }
+
+/* ---------- Shared parts ---------- */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  border: 1px solid var(--line);
+}
+.glass-strong {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  border: 1px solid var(--line);
+}
+.data { font-family: var(--font-data); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.up { color: var(--jade); }
+.down { color: var(--coral); }
+
+.btn-primary {
+  height: var(--h-primary); padding: 0 24px; border-radius: var(--r-control);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--cream); color: #2a1236;
+  font-weight: 700; font-size: 17px; letter-spacing: 0.01em;
+  box-shadow: 0 10px 30px rgba(255, 196, 160, 0.22), inset 0 -2px 0 rgba(120, 60, 80, 0.12);
+  transition: transform 120ms var(--ease), filter 160ms var(--ease), box-shadow 200ms var(--ease);
+}
+.btn-primary:hover { filter: brightness(1.04); box-shadow: 0 14px 36px rgba(255, 196, 160, 0.32), inset 0 -2px 0 rgba(120, 60, 80, 0.12); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-glass {
+  height: var(--h-control); padding: 0 18px; border-radius: var(--r-control);
+  background: rgba(255, 238, 226, 0.07); border: 1px solid var(--line);
+  font-weight: 600; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background-color 160ms var(--ease), border-color 160ms var(--ease), transform 120ms var(--ease);
+}
+.btn-glass:hover { background: var(--glass-press); border-color: var(--line-2); }
+.btn-glass:active { transform: scale(0.98); }
+.btn-glass:disabled { opacity: 0.6; cursor: progress; }
+/* a header-height glass pill, aligned with icon buttons */
+.btn-glass.pill { height: var(--h-icon); border-radius: calc(var(--h-icon) / 2); padding: 0 14px; font-size: 14px; }
+.panel {
+  width: min(var(--w-panel), 100%);
+  padding: var(--pad); border-radius: var(--r-panel);
+  display: flex; flex-direction: column; gap: var(--gap);
+  box-shadow: var(--shadow);
+}
+/* a 4px-padded track holding equal segments (timeframes, fighters) */
+.track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px;
+  padding: 4px; border-radius: var(--r-control);
+  background: rgba(255, 238, 226, 0.06);
+}
+.track > button { border-radius: var(--r-inner); }
+.icon-btn {
+  width: var(--h-icon); height: var(--h-icon); border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--frost);
+  backdrop-filter: var(--frost);
+  border: 1px solid var(--line);
+  transition: background-color 160ms var(--ease), border-color 160ms var(--ease);
+}
+.icon-btn:hover { background: rgba(60, 28, 78, 0.55); border-color: var(--line-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}

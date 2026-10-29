@@ -1,7 +1,7 @@
 import { createBird, flap, stepBird, type Bird } from './physics.ts';
-import { hitsBounds, hitsObstacle, passedObstacle } from './collision.ts';
+import { hitsGround, hitsObstacle, passedObstacle } from './collision.ts';
 import type { Obstacle } from './level.ts';
-import { SCROLL_SPEED } from './constants.ts';
+import { SCROLL_SPEED, CEILING } from './constants.ts';
 
 export type Phase = 'ready' | 'playing' | 'dead';
 
@@ -28,6 +28,7 @@ export function stepGame(g: GameState, dt: number): void {
   if (g.phase !== 'playing') return;
   g.scrollX += SCROLL_SPEED * dt;
   stepBird(g.bird, dt);
+  if (g.bird.y < CEILING) { g.bird.y = CEILING; g.bird.vy = Math.max(g.bird.vy, 0); }
 
   const next = g.obstacles[g.nextObstacle];
   if (next && passedObstacle(g.scrollX, next)) {
@@ -36,8 +37,8 @@ export function stepGame(g: GameState, dt: number): void {
   }
   if (g.nextObstacle >= g.obstacles.length) { g.phase = 'dead'; return; }
 
-  // bounds death: deadAt is the nearest upcoming candle, not one the bird touched
-  if (hitsBounds(g.bird.y)) { g.phase = 'dead'; g.deadAt = g.obstacles[g.nextObstacle] ?? null; return; }
+  // ground death: deadAt is the nearest upcoming candle, not one the bird touched
+  if (hitsGround(g.bird.y)) { g.phase = 'dead'; g.deadAt = g.obstacles[g.nextObstacle] ?? null; return; }
   // start one behind nextObstacle: the just-passed candle stays deadly until the bird fully clears it
   for (let i = Math.max(0, g.nextObstacle - 1); i < Math.min(g.nextObstacle + 3, g.obstacles.length); i++) {
     const ob = g.obstacles[i]!;
