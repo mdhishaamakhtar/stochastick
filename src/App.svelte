@@ -8,7 +8,7 @@
   import { fmtPct, fmtPrice } from './lib/format.ts';
   import { setFighter } from './lib/storage.ts';
   import * as audio from './game/audio.ts';
-  import { drawRunCard, shareCanvas } from './render/postcard.ts';
+  import { drawRunCard, shareCanvas, copyCanvas } from './render/postcard.ts';
   import type { Fighter } from './render/fighters.ts';
   import Landing from './ui/Landing.svelte';
   import Picker from './ui/Picker.svelte';
@@ -84,24 +84,35 @@
     app.muted = audio.toggleMute();
   }
 
+  function runCard() {
+    const d = app.death!, stock = app.stock!;
+    return drawRunCard({
+      score: d.score,
+      stock: stock.name,
+      timeframe: TF_LABELS[app.tf],
+      title: d.survivedAll ? 'Flew the whole chart' : `Rekt on ${d.date}`,
+      move: `${fmtPrice(d.startPrice, stock.index)} → ${fmtPrice(d.price, stock.index)}  ${fmtPct(d.changePct)}`,
+      up: d.up,
+      chart: d.chart,
+      at: d.at,
+      fighter: app.fighter,
+    });
+  }
+
+  function copy() {
+    if (!app.death || !app.stock) return;
+    // no await before the clipboard write: Safari requires it inside the click
+    copyCanvas(runCard())
+      .then(() => say('Run card copied. Paste it into any chat.'))
+      .catch(() => say("Couldn't copy the image. Try Share instead."));
+  }
+
   async function share() {
     const d = app.death;
-    if (!d || !app.stock) return;
+    if (!d || !app.stock || sharing) return;
     sharing = true;
     try {
-      const card = await drawRunCard({
-        score: d.score,
-        stock: app.stock.name,
-        timeframe: TF_LABELS[app.tf],
-        title: d.survivedAll ? 'Flew the whole chart' : `Rekt on ${d.date}`,
-        move: `${fmtPrice(d.startPrice, app.stock.index)} → ${fmtPrice(d.price, app.stock.index)}  ${fmtPct(d.changePct)}`,
-        up: d.up,
-        chart: d.chart,
-        at: d.at,
-        fighter: app.fighter,
-      });
-      const text = `I survived ${d.score} ${d.score === 1 ? 'candle' : 'candles'} of ${app.stock.name} on Stochastick. https://stochastick.hishaam.dev`;
-      const how = await shareCanvas(card, `stochastick-${app.stock.symbol.toLowerCase()}-${d.score}.png`, text);
+      const how = await shareCanvas(await runCard(), `stochastick-${app.stock.symbol.toLowerCase()}-${d.score}.png`);
       if (how === 'saved') say('Run card saved to your downloads.');
     } catch {
       say("Couldn't make the share card. Try again.");
@@ -154,7 +165,7 @@
   {:else if app.screen === 'game'}
     <Hud onback={() => history.back()} onmute={toggleMute} onfighter={chooseFighter} />
     {#if app.death}
-      <DeathCard info={app.death} {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={() => engine.restart()} onstocks={() => history.back()} onshare={share} />
+      <DeathCard info={app.death} {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={() => engine.restart()} onstocks={() => history.back()} onshare={share} oncopy={copy} />
     {/if}
   {/if}
 

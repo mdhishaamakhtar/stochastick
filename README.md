@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 -->
 
 <p align="center">
-  <img src="./public/og-image.png" alt="Stochastick Preview">
+  <img src="./public/og-image.jpg" alt="Stochastick Preview">
 </p>
 
 ## Stochastick
@@ -70,7 +70,7 @@ The look, "Afterglow": a WebGL2 dusk sky (dithered, so the gradient never bands)
 | `npm test` | Run the Vitest unit tests |
 | `npm run build` | Type-check and bundle to `dist/` |
 | `npm run fetch-data` | Re-pull candle data from Yahoo Finance (no API key) |
-| open `/scripts/og-image.html` on the dev server | Re-render `public/og-image.png` from real NIFTY 50 data |
+| open `/scripts/og-image.html` on the dev server | Re-render `public/og-image.jpg` from real NIFTY 50 data |
 
 ## Project Structure
 

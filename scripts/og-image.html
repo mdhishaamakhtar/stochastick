@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Dev-only: open http://localhost:5173/scripts/og-image.html on `npm run dev`
-     to render public/og-image.png (2400×1260) from real NIFTY 50 closes. -->
+     to render public/og-image.jpg (2400×1260) from real NIFTY 50 closes. -->
 <html><head><meta charset="utf-8"><title>og-image</title>
 <link rel="stylesheet" href="/src/app.css" />
 <style>body{overflow:auto;padding:20px}canvas{width:1200px;max-width:100%;height:auto;display:block}p{font:14px system-ui;margin:12px 0}</style>
@@ -13,8 +13,8 @@ import { downsample } from '/src/lib/format.ts';
 const candles = await loadCandles('NIFTY50', '1wk');
 const c = await drawOgImage(downsample(candles.map((k) => k.c), 160));
 document.body.appendChild(c);
-const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
 const res = await fetch('/__og', { method: 'POST', body: blob });
-document.getElementById('status').textContent = res.ok ? 'Saved public/og-image.png' : 'Save failed';
+document.getElementById('status').textContent = res.ok ? 'Saved public/og-image.jpg' : 'Save failed';
 </script>
 </body></html>

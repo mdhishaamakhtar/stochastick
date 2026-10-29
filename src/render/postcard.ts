@@ -314,17 +314,25 @@ export async function drawOgImage(series: number[]): Promise<HTMLCanvasElement> 
   return c;
 }
 
-/** Share through the OS sheet where files are supported, else download. */
-export async function shareCanvas(c: HTMLCanvasElement, name: string, text: string): Promise<'shared' | 'saved' | 'cancelled'> {
-  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
-  if (!blob) return 'cancelled';
+const toBlob = (c: HTMLCanvasElement) =>
+  new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('canvas export failed'))), 'image/png'));
+
+/**
+ * Share through the OS sheet where files are supported, else download.
+ * The file must be the ONLY item in the payload: any text, including a
+ * `title` (which iOS vends as text), makes Slack's share extension take the
+ * text and silently drop the image.
+ */
+export async function shareCanvas(c: HTMLCanvasElement, name: string): Promise<'shared' | 'saved' | 'cancelled'> {
+  const blob = await toBlob(c);
   const file = new File([blob], name, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], text });
+      await navigator.share({ files: [file] });
       return 'shared';
-    } catch {
-      return 'cancelled';
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
+      // NotAllowedError and friends: fall through to a download
     }
   }
   const url = URL.createObjectURL(blob);
@@ -332,6 +340,15 @@ export async function shareCanvas(c: HTMLCanvasElement, name: string, text: stri
   a.href = url;
   a.download = name;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return 'saved';
+}
+
+export const canCopyImage = (): boolean => typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write;
+
+/** Must be called synchronously inside the click: Safari only allows clipboard
+ *  writes in a user gesture, so the item is created now and handed the
+ *  still-rendering card as a promise. */
+export function copyCanvas(card: Promise<HTMLCanvasElement>): Promise<void> {
+  return navigator.clipboard.write([new ClipboardItem({ 'image/png': card.then(toBlob) })]);
 }

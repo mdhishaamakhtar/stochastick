@@ -12,7 +12,7 @@ const saveOg = (): Plugin => ({
       const chunks: Buffer[] = [];
       req.on('data', (c: Buffer) => chunks.push(c));
       req.on('end', () => {
-        writeFileSync('public/og-image.png', Buffer.concat(chunks));
+        writeFileSync('public/og-image.jpg', Buffer.concat(chunks));
         res.end('ok');
       });
     });

@@ -5,15 +5,17 @@
   import { onMount } from 'svelte';
   import type { DeathInfo } from '../lib/app.svelte.ts';
   import { fmtPct, fmtPrice, linePath } from '../lib/format.ts';
+  import { canCopyImage } from '../render/postcard.ts';
   import type { Fighter } from '../render/fighters.ts';
   import Icon from './Icon.svelte';
   import FighterChip from './FighterChip.svelte';
 
-  let { info, onretry, onstocks, onshare, sharing, index = false, fighter, onfighter }: {
+  let { info, onretry, onstocks, onshare, oncopy, sharing, index = false, fighter, onfighter }: {
     info: DeathInfo;
     onretry: () => void;
     onstocks: () => void;
     onshare: () => void;
+    oncopy: () => void;
     sharing: boolean;
     index?: boolean;
     fighter: Fighter;
@@ -21,6 +23,7 @@
   } = $props();
 
   const W = 300, H = 64;
+  const copyable = canCopyImage();
   const shown = new Tween(0, { duration: 700, easing: cubicOut });
   onMount(() => { shown.target = info.score; });
 
@@ -77,9 +80,10 @@
 
     <div class="actions">
       <button class="btn-primary" type="button" onclick={onretry}><Icon name="retry" size={18} />Fly again</button>
-      <div class="pair">
-        <button class="btn-glass" type="button" onclick={onshare} disabled={sharing}><Icon name="share" size={18} />{sharing ? 'Preparing…' : 'Share run'}</button>
-        <button class="btn-glass" type="button" onclick={onstocks}>Other charts</button>
+      <div class="row" class:three={copyable}>
+        <button class="btn-glass" type="button" onclick={onshare} disabled={sharing}><Icon name="share" size={17} />{sharing ? 'Preparing…' : 'Share'}</button>
+        {#if copyable}<button class="btn-glass" type="button" onclick={oncopy}><Icon name="copy" size={17} />Copy</button>{/if}
+        <button class="btn-glass" type="button" onclick={onstocks}>Charts</button>
       </div>
     </div>
   </article>
@@ -116,5 +120,7 @@
   .span { font-size: 12px; color: var(--cream-3); margin-top: -8px; }
   .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .actions .btn-primary { width: 100%; }
-  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .row .btn-glass { padding: 0 10px; }
 </style>
