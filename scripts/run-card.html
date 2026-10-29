@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Dev-only: preview the share card for a short run and a long run. -->
+<html><head><meta charset="utf-8"><title>run-card</title>
+<link rel="stylesheet" href="/src/app.css" />
+<style>body{overflow:auto;padding:20px;display:flex;gap:20px;flex-wrap:wrap}canvas{width:420px;height:auto}</style>
+</head><body>
+<script type="module">
+import { drawRunCard } from '/src/render/postcard.ts';
+const series = Array.from({ length: 60 }, (_, i) => 0.5 + 0.35 * Math.sin(i / 6) + (i % 5) * 0.02);
+const norm = series.map((v) => (v - Math.min(...series)) / (Math.max(...series) - Math.min(...series)));
+for (const [score, at, f] of [[1, 1 / 13, 'bull'], [37, 0.66, 'bear']]) {
+  document.body.appendChild(await drawRunCard({
+    score, stock: 'HDFC Bank', timeframe: 'Daily', title: 'Rekt on 1 Nov 2021',
+    move: '₹791.42 → ₹802.65  +1.42%', up: true, chart: norm, at, fighter: f,
+  }));
+}
+</script></body></html>

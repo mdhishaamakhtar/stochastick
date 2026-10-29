@@ -175,33 +175,31 @@ export interface RunCard {
 
 export async function drawRunCard(r: RunCard): Promise<HTMLCanvasElement> {
   await fontsReady();
+  // Three fixed zones that never overlap: the result (text, 96–630), the run
+  // (chart band 720–930, fighter sitting on the point where it ended), and
+  // the horizon with the footer on the ground (1110+).
   const W = 1080, H = 1350, k = 1;
   const c = document.createElement('canvas');
   c.width = W;
   c.height = H;
   const ctx = c.getContext('2d')!;
-  const horizon = 1080;
-  backdrop(ctx, W, H, horizon, [790, 900, 118]);
-  skyline(ctx, W, horizon, r.chart.filter((_, i) => i % 3 === 0), k);
-  ground(ctx, W, H, horizon, 790);
-
-  const [dx, dy] = runLine(ctx, r.chart, r.at, 90, 660, 900, 300, k);
-  ctx.strokeStyle = r.up ? '#8ff0c4' : '#ff8a7a';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(dx, dy, 14, 0, Math.PI * 2);
-  ctx.stroke();
-  drawHead(ctx, r.fighter, dx, dy - 92, 150);
+  const horizon = 1110;
+  backdrop(ctx, W, H, horizon, [820, 1000, 112]);
+  skyline(ctx, W, horizon, r.chart, k, true);
+  ground(ctx, W, H, horizon, 820);
 
   ctx.textBaseline = 'alphabetic';
-  label(ctx, '500 30px "Azeret Mono"', 'rgba(255,238,226,0.78)', `${r.stock} · ${r.timeframe}`.toUpperCase(), 90, 132);
-  label(ctx, '400 300px Gloock', '#fff3e6', String(r.score), 80, 420);
-  label(ctx, '500 38px "Hanken Grotesk"', 'rgba(255,238,226,0.82)', r.score === 1 ? 'candle survived' : 'candles survived', 92, 482);
-  label(ctx, '400 58px Gloock', '#fff3e6', r.title, 90, 574);
-  label(ctx, '500 30px "Azeret Mono"', r.up ? '#8ff0c4' : '#ff9d8f', r.move, 92, 624);
+  label(ctx, '500 30px "Azeret Mono"', 'rgba(255,238,226,0.78)', `${r.stock} · ${r.timeframe}`.toUpperCase(), 90, 128);
+  label(ctx, '400 280px Gloock', '#fff3e6', String(r.score), 78, 400);
+  label(ctx, '500 36px "Hanken Grotesk"', 'rgba(255,238,226,0.82)', r.score === 1 ? 'candle survived' : 'candles survived', 92, 462);
+  label(ctx, '400 56px Gloock', '#fff3e6', r.title, 90, 562);
+  label(ctx, '500 30px "Azeret Mono"', r.up ? '#8ff0c4' : '#ff9d8f', r.move, 92, 614);
 
-  label(ctx, '400 52px Gloock', '#fff3e6', 'Stochastick', 90, 1246);
-  label(ctx, '500 26px "Azeret Mono"', 'rgba(255,238,226,0.7)', 'stochastick.hishaam.dev', 990, 1240, 'right');
+  const [dx, dy] = runLine(ctx, r.chart, r.at, 90, 730, 900, 200, k);
+  drawHead(ctx, r.fighter, dx, dy, 104);
+
+  label(ctx, '400 52px Gloock', '#fff3e6', 'Stochastick', 90, 1252);
+  label(ctx, '500 26px "Azeret Mono"', 'rgba(255,238,226,0.7)', 'stochastick.hishaam.dev', 990, 1246, 'right');
   grain(ctx, W, H);
   return c;
 }
