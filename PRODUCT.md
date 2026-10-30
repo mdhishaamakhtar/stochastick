@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Delegated: the owner left stack choices open. Currently Vite + vanilla TypeScript + Canvas 2D, zero runtime dependencies, static deploy on Vercel at stochastick.hishaam.dev. Market data is baked into `public/data/*.bin` by `npm run fetch-data` (Yahoo Finance).
+Delegated: the owner left stack choices open. Currently Vite + Svelte 5 + TypeScript, with a WebGL2 sky and a Canvas 2D scene, no runtime dependencies beyond Svelte's compiled output, static deploy on Vercel at stochastick.hishaam.dev. Market data is baked into `public/data/*.bin` by `npm run fetch-data` (Yahoo Finance).
 
 ## Users
 

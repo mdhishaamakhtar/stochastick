@@ -7,6 +7,9 @@ import { isMuted } from '../game/audio.ts';
 export type Screen = 'landing' | 'picker' | 'game';
 
 export interface DeathInfo {
+  title: string;
+  /** died on the first candle, so there is no move to report */
+  noRun: boolean;
   score: number;
   best: number;
   isNewBest: boolean;

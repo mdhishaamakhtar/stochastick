@@ -70,6 +70,7 @@ The look, "Afterglow": a WebGL2 dusk sky (dithered, so the gradient never bands)
 | `npm test` | Run the Vitest unit tests |
 | `npm run build` | Type-check and bundle to `dist/` |
 | `npm run fetch-data` | Re-pull candle data from Yahoo Finance (no API key) |
+| `npm run score-difficulty` | Re-rank every chart's difficulty from its level (runs after `fetch-data`) |
 | open `/scripts/og-image.html` on the dev server | Re-render `public/og-image.jpg` from real NIFTY 50 data |
 
 ## Project Structure
@@ -101,6 +102,8 @@ Baked at build time, not fetched at runtime. `npm run fetch-data` (`scripts/fetc
 - `public/data/manifest.json` — the stock list with names, index flags, sparkline previews, last close, 1-month change, and per-timeframe candle counts and date ranges, loaded once at startup.
 
 Yahoo leaves a few corporate actions unadjusted (an intraday split, a demerger); the script rescales the bars before them so the level shows market moves, not mechanical resets.
+
+Difficulty comes from `scripts/score-difficulty.ts`: a seeded, slightly imperfect bot flies the first 150 candles of each chart 24 times, charts are ranked by how far it gets, and the ranking is split evenly into Easy, Medium, Hard and Brutal.
 
 There's no API key and no server involved; the script just writes static files into `public/`. The shipped data is a frozen snapshot — re-run `npm run fetch-data` to refresh it.
 

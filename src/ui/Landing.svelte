@@ -52,7 +52,13 @@
   .landing > * { pointer-events: auto; }
   .mute { position: absolute; top: max(var(--pad), env(safe-area-inset-top)); right: var(--gutter); }
 
-  .hero { align-self: start; text-align: center; padding-top: clamp(40px, 9vh, 96px); pointer-events: none; }
+  .hero { align-self: start; text-align: center; padding-top: clamp(40px, 9vh, 96px); pointer-events: none; position: relative; isolation: isolate; }
+  /* a pool of dusk, so the demo's pillars and price line pass behind the copy */
+  .hero::before {
+    content: ''; position: absolute; z-index: -1; left: 50%; bottom: -48px; transform: translateX(-50%);
+    width: min(100vw, 640px); height: 220px;
+    background: radial-gradient(closest-side, rgba(20, 8, 34, 0.55), rgba(20, 8, 34, 0));
+  }
   h1 {
     font-family: var(--font-display); font-weight: 400;
     font-size: clamp(56px, 15.5vw, 136px); line-height: 0.95; letter-spacing: -0.035em;

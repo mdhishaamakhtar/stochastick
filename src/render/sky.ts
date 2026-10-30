@@ -31,7 +31,7 @@ float noise(vec2 p) {
 }
 float fbm(vec2 p) {
   float v = 0.0, a = 0.5;
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
+  for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
   return v;
 }
 vec3 ramp(float t, vec3 a, vec3 b, vec3 c, vec3 d, vec3 e) {
@@ -57,12 +57,14 @@ void main() {
   col += vec3(1.0, 0.78, 0.6) * exp(-d / (r * 1.9)) * 0.26;
 
   float band = smoothstep(0.34, 0.52, t) * (1.0 - smoothstep(0.8, 0.96, t));
-  vec2 cp = vec2(fc.x / uRes.x * 2.4 + uTime * 0.006 + uDrift, fc.y / hz * 10.0);
-  float n = fbm(cp * vec2(1.0, 0.55) + vec2(0.0, uTime * 0.01));
-  float cloud = smoothstep(0.56, 0.8, n) * band;
-  vec3 cloudCol = mix(hex(92., 38., 96.), hex(255., 168., 142.), smoothstep(0.45, 1.0, t));
-  cloudCol += vec3(0.35, 0.2, 0.12) * exp(-d / (r * 4.5));
-  col = mix(col, cloudCol, cloud * 0.5);
+  if (band > 0.0) { // the noise is the shader's whole cost; most pixels skip it
+    vec2 cp = vec2(fc.x / uRes.x * 2.4 + uTime * 0.006 + uDrift, fc.y / hz * 10.0);
+    float n = fbm(cp * vec2(1.0, 0.55) + vec2(0.0, uTime * 0.01));
+    float cloud = smoothstep(0.56, 0.8, n) * band;
+    vec3 cloudCol = mix(hex(92., 38., 96.), hex(255., 168., 142.), smoothstep(0.45, 1.0, t));
+    cloudCol += vec3(0.35, 0.2, 0.12) * exp(-d / (r * 4.5));
+    col = mix(col, cloudCol, cloud * 0.5);
+  }
 
   float disc = smoothstep(r + 1.0, r - 1.0, d);
   vec3 sunCol = mix(vec3(1.0, 0.98, 0.93), vec3(1.0, 0.77, 0.6), smoothstep(0.0, r, d));
@@ -84,6 +86,7 @@ export class Sky {
   private w = 1;
   private h = 1;
   private dpr = 1;
+  maxDpr = 1.25;
   private ready = false; // false until the shader links, and while the context is lost
 
   private canvas: HTMLCanvasElement;
@@ -140,7 +143,7 @@ export class Sky {
 
   resize(cssW: number, cssH: number): void {
     // The sky is soft; one sample per CSS pixel is plenty and keeps phones cool.
-    this.dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
     this.w = cssW;
     this.h = cssH;
     this.canvas.width = Math.round(cssW * this.dpr);

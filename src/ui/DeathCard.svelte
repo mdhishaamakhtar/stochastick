@@ -11,8 +11,9 @@
   import Icon from './Icon.svelte';
   import FighterChip from './FighterChip.svelte';
 
-  let { info, onretry, onstocks, onshare, oncopy, sharing, index = false, fighter, onfighter }: {
+  let { info, label, onretry, onstocks, onshare, oncopy, sharing, index = false, fighter, onfighter }: {
     info: DeathInfo;
+    label: string;
     onretry: () => void;
     onstocks: () => void;
     onshare: () => void;
@@ -26,7 +27,11 @@
   const W = 300, H = 64;
   const copyable = canCopyImage();
   const shown = new Tween(0, { duration: prefersReducedMotion() ? 0 : 700, easing: cubicOut });
-  onMount(() => { shown.target = info.score; });
+  let retry: HTMLButtonElement;
+  onMount(() => {
+    shown.target = info.score;
+    retry.focus({ preventScroll: true });
+  });
 
   const path = $derived(linePath(info.chart, W, H, 4));
   const at = $derived.by(() => {
@@ -48,9 +53,9 @@
 </script>
 
 <div class="overlay" transition:fade={{ duration: 260 }}>
-  <article class="card panel glass-strong" in:condense aria-labelledby="death-title">
+  <div class="card panel glass-strong" role="dialog" in:condense aria-labelledby="death-title">
     <div class="head">
-      <h2 id="death-title">{info.survivedAll ? 'You flew the whole chart' : `Rekt on ${info.date}`}</h2>
+      <h2 id="death-title">{info.title}</h2>
       <FighterChip value={fighter} onchange={onfighter} />
     </div>
 
@@ -74,20 +79,24 @@
     </div>
 
     <p class="move data">
-      {fmtPrice(info.startPrice, index)} → {fmtPrice(info.price, index)}
-      <span class:up={info.up} class:down={!info.up}>{fmtPct(info.changePct)}</span>
+      {#if info.noRun}
+        Never got past {fmtPrice(info.price, index)}
+      {:else}
+        {fmtPrice(info.startPrice, index)} → {fmtPrice(info.price, index)}
+        <span class:up={info.up} class:down={!info.up}>{fmtPct(info.changePct)}</span>
+      {/if}
     </p>
-    <p class="span data">{info.startDate} – {info.date}</p>
+    <p class="span data"><span>{label}</span><span>{info.noRun ? info.date : `${info.startDate} – ${info.date}`}</span></p>
 
     <div class="actions">
-      <button class="btn-primary" type="button" onclick={onretry}><Icon name="retry" size={18} />Fly again</button>
+      <button class="btn-primary" type="button" bind:this={retry} onclick={onretry}><Icon name="retry" size={18} />Fly again</button>
       <div class="row" class:three={copyable}>
         <button class="btn-glass" type="button" onclick={onshare} disabled={sharing}><Icon name="share" size={17} />{sharing ? 'Preparing…' : 'Share'}</button>
         {#if copyable}<button class="btn-glass" type="button" onclick={oncopy}><Icon name="copy" size={17} />Copy</button>{/if}
         <button class="btn-glass" type="button" onclick={onstocks}>Charts</button>
       </div>
     </div>
-  </article>
+  </div>
 </div>
 
 <style>
@@ -118,7 +127,7 @@
     border: 2px solid currentColor; background: var(--plum-900);
   }
   .move { font-size: 13px; color: var(--cream); display: flex; flex-wrap: wrap; gap: 4px 10px; }
-  .span { font-size: 12px; color: var(--cream-3); margin-top: -8px; }
+  .span { font-size: 12px; color: var(--cream-3); margin-top: -8px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
   .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .actions .btn-primary { width: 100%; }
   .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

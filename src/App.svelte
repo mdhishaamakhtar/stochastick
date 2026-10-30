@@ -4,8 +4,9 @@
   import { app, type Screen } from './lib/app.svelte.ts';
   import { Engine } from './lib/engine.ts';
   import { loadManifest } from './data/load.ts';
-  import { TF_LABELS, type StockMeta, type Timeframe } from './data/manifest.ts';
+  import { TF_LABELS, tierFor, type StockMeta, type Timeframe } from './data/manifest.ts';
   import { fmtPct, fmtPrice } from './lib/format.ts';
+  import { prefersReducedMotion } from './lib/motion.ts';
   import { setFighter } from './lib/storage.ts';
   import * as audio from './game/audio.ts';
   import { drawRunCard, shareCanvas, copyCanvas } from './render/postcard.ts';
@@ -20,12 +21,20 @@
   let engine: Engine;
   let toast = $state('');
   let sharing = $state(false);
+  let veil = $state(false);
   let toastTimer = 0;
 
   // A player still mashing to stay alive must not dismiss the card unseen.
   const RETRY_GUARD_MS = 500;
+  const VEIL_MS = 140;
 
   const HASH: Record<Screen, string> = { landing: '', picker: '#charts', game: '#fly' };
+
+  /** Dim the world so a level swap happens unseen. Clear `veil` after swapping. */
+  function dim(): Promise<void> {
+    veil = true;
+    return new Promise((done) => setTimeout(done, prefersReducedMotion() ? 0 : VEIL_MS));
+  }
 
   function say(msg: string) {
     toast = msg;
@@ -53,7 +62,13 @@
         return;
       }
       app.loading = null; // abandon any chart still loading
-      if (app.screen === 'game') { app.death = null; void engine.startDemo(); }
+      if (app.screen === 'game') {
+        app.death = null;
+        void dim().then(() => {
+          if (app.screen !== 'game') void engine.startDemo();
+          veil = false;
+        });
+      }
       app.screen = s;
     };
     window.addEventListener('popstate', onPop);
@@ -61,14 +76,20 @@
   });
 
   async function pick(stock: StockMeta, tf: Timeframe) {
+    if (app.loading) return;
     audio.unlock();
     app.loading = stock.symbol;
     try {
       const candles = await engine.load(stock, tf);
       // only start if the player is still waiting on this exact chart
-      if (app.screen !== 'picker' || app.loading !== stock.symbol) return;
-      engine.play(stock, tf, candles);
-      go('game');
+      const waiting = () => app.screen === 'picker' && app.loading === stock.symbol;
+      if (!waiting()) return;
+      await dim();
+      if (waiting()) {
+        engine.play(stock, tf, candles);
+        go('game');
+      }
+      veil = false;
     } catch {
       if (app.loading === stock.symbol) say(`Couldn't load ${stock.symbol}. Check your connection and try again.`);
     } finally {
@@ -91,14 +112,21 @@
     app.muted = audio.toggleMute();
   }
 
+  function runLabel(tf: Timeframe) {
+    const tier = tierFor(app.stock, tf);
+    return tier ? `${TF_LABELS[tf]} · ${tier}` : TF_LABELS[tf];
+  }
+
   function runCard() {
     const d = app.death!, stock = app.stock!;
     return drawRunCard({
       score: d.score,
       stock: stock.name,
-      timeframe: TF_LABELS[app.tf],
-      title: d.survivedAll ? 'Flew the whole chart' : `Rekt on ${d.date}`,
-      move: `${fmtPrice(d.startPrice, stock.index)} → ${fmtPrice(d.price, stock.index)}  ${fmtPct(d.changePct)}`,
+      timeframe: runLabel(app.tf),
+      title: d.title,
+      move: d.noRun
+        ? `Never got past ${fmtPrice(d.price, stock.index)}`
+        : `${fmtPrice(d.startPrice, stock.index)} → ${fmtPrice(d.price, stock.index)}  ${fmtPct(d.changePct)}`,
       up: d.up,
       chart: d.chart,
       at: d.at,
@@ -158,6 +186,8 @@
   onpointerdown={(e) => { if (app.screen === 'game') { e.preventDefault(); engine.tap(); } }}
 ></canvas>
 
+<div class="veil" class:on={veil}></div>
+
 <div class="ui">
   {#if app.failed}
     <div class="failed panel glass-strong">
@@ -168,11 +198,11 @@
   {:else if app.screen === 'landing'}
     <Landing onplay={() => go('picker')} onfighter={chooseFighter} onmute={toggleMute} />
   {:else if app.screen === 'picker'}
-    <Picker onpick={pick} onback={() => history.back()} />
+    <Picker onpick={pick} onback={() => history.back()} oncover={(c) => engine.setCovered(c)} />
   {:else if app.screen === 'game'}
     <Hud onback={() => history.back()} onmute={toggleMute} onfighter={chooseFighter} />
     {#if app.death}
-      <DeathCard info={app.death} {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={retry} onstocks={() => history.back()} onshare={share} oncopy={copy} />
+      <DeathCard info={app.death} label="{app.stock?.symbol} · {runLabel(app.tf)}" {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={retry} onstocks={() => history.back()} onshare={share} oncopy={copy} />
     {/if}
   {/if}
 

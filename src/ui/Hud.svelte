@@ -3,7 +3,7 @@
   import { cubicOut } from 'svelte/easing';
   import { app } from '../lib/app.svelte.ts';
   import { fmtPrice, linePath } from '../lib/format.ts';
-  import { TF_LABELS } from '../data/manifest.ts';
+  import { TF_LABELS, tierFor } from '../data/manifest.ts';
   import type { Fighter } from '../render/fighters.ts';
   import Icon from './Icon.svelte';
   import FighterChip from './FighterChip.svelte';
@@ -17,6 +17,8 @@
   } = $props();
 
   const W = 300, H = 30;
+  let chartW = $state(W);
+  const tier = $derived(tierFor(app.stock, app.tf));
   const path = $derived(linePath(app.chart, W, H, 3));
   const head = $derived.by(() => {
     const n = app.chart.length;
@@ -29,9 +31,9 @@
 <div class="hud" transition:fade={{ duration: 200 }}>
   <div class="top">
     <button class="icon-btn" type="button" aria-label="Back to charts" onclick={(e) => { e.currentTarget.blur(); onback(); }}><Icon name="back" /></button>
-    <div class="scoreblock">
+    <div class="scoreblock" class:gone={app.death}>
       {#key app.score}<span class="score">{app.score}</span>{/key}
-      <span class="label data">{app.stock?.symbol ?? ''} · {TF_LABELS[app.tf]}</span>
+      <span class="label data">{app.stock?.symbol ?? ''} · {TF_LABELS[app.tf]}{tier ? ` · ${tier}` : ''}</span>
     </div>
     <button class="icon-btn" type="button" aria-label={app.muted ? 'Turn sound on' : 'Mute sound'} onclick={(e) => { e.currentTarget.blur(); onmute(); }}>
       <Icon name={app.muted ? 'muted' : 'sound'} />
@@ -46,12 +48,12 @@
     </div>
   {/if}
 
-  <div class="strip panel glass">
+  <div class="strip panel glass" class:gone={app.death}>
     <div class="row">
       <span class="data date">{app.date}</span>
       <span class="data px" class:up={app.up} class:down={!app.up}>{app.price ? fmtPrice(app.price, app.stock?.index) : ''}</span>
     </div>
-    <div class="chart">
+    <div class="chart" bind:clientWidth={chartW}>
     <svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <clipPath id="flown"><rect x="0" y="-4" width={head.x} height={H + 8} /></clipPath>
@@ -59,14 +61,17 @@
       <path d={path} class="ahead" />
       <path d={path} class="flown" clip-path="url(#flown)" />
     </svg>
-    <span class="head" style="left: {(head.x / W) * 100}%; top: {(head.y / H) * 100}%"></span>
+    <span class="head" style="translate: {(head.x / W) * chartW}px {head.y}px"></span>
     </div>
   </div>
 </div>
 
 <style>
-  /* above the death card's scrim, so back, sound and fighter stay reachable */
-  .hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+  /* above the death card's scrim, so back, sound and fighter stay reachable;
+     the score and chart step aside because the card repeats them */
+  /* Blur over a canvas that changes every frame is the most expensive thing
+     a phone can do, so the HUD trades frost for denser plum during play. */
+  .hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; --frost: none; --glass: rgba(28, 12, 40, 0.66); }
   .hud button { pointer-events: auto; }
   .top {
     position: absolute; left: var(--gutter); right: var(--gutter); top: max(var(--pad), env(safe-area-inset-top));
@@ -80,6 +85,8 @@
     display: flex; flex-direction: column; align-items: center; gap: 6px;
     pointer-events: none;
   }
+  .scoreblock, .strip { transition: opacity 200ms var(--ease); }
+  .gone { opacity: 0; }
   .score {
     font-family: var(--font-display); font-size: clamp(72px, 9vw, 104px); line-height: 0.9; letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
@@ -102,7 +109,7 @@
   .prompt {
     height: var(--h-icon); display: flex; align-items: center;
     padding: 0 20px; border-radius: calc(var(--h-icon) / 2);
-    background: rgba(28, 12, 40, 0.5);
+    background: var(--glass);
     -webkit-backdrop-filter: var(--frost); backdrop-filter: var(--frost);
     border: 1px solid var(--line);
     font-weight: 600; font-size: 16px; white-space: nowrap;
@@ -126,9 +133,9 @@
   .ahead { stroke: rgba(255, 238, 226, 0.25); }
   .flown { stroke: var(--cream); }
   .head {
-    position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+    position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; left: 0; top: 0;
     background: var(--cream);
     box-shadow: 0 0 0 4px rgba(255, 178, 140, 0.28), 0 2px 8px rgba(12, 4, 20, 0.4);
-    transition: left 220ms var(--ease), top 220ms var(--ease);
+    transition: translate 220ms var(--ease);
   }
 </style>

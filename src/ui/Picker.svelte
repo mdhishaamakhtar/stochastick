@@ -1,13 +1,19 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { app } from '../lib/app.svelte.ts';
-  import { TIMEFRAMES, type StockMeta, type Timeframe } from '../data/manifest.ts';
+  import { preloadCandles } from '../data/load.ts';
+  import { TIERS, TIMEFRAMES, tierFor, type StockMeta, type Timeframe } from '../data/manifest.ts';
   import { fmtPct, fmtPrice, linePath } from '../lib/format.ts';
-  import { getBest } from '../lib/storage.ts';
+  import { getBest, getSort, setSort, type ChartSort } from '../lib/storage.ts';
   import Icon from './Icon.svelte';
 
-  let { onpick, onback }: { onpick: (s: StockMeta, tf: Timeframe) => void; onback: () => void } = $props();
+  let { onpick, onback, oncover }: {
+    onpick: (s: StockMeta, tf: Timeframe) => void;
+    onback: () => void;
+    oncover: (covered: boolean) => void;
+  } = $props();
 
   const TF_SHORT: Record<Timeframe, string> = { '15m': '15m', '1h': '1h', '1d': 'Daily', '1wk': 'Weekly' };
   const TF_NOTE: Record<Timeframe, string> = {
@@ -19,6 +25,10 @@
 
   let tf = $state<Timeframe>(app.tf);
   let query = $state('');
+  let sort = $state<ChartSort>(getSort());
+
+  const SORT_LABEL: Record<ChartSort, string> = { default: 'Default order', easiest: 'Easiest first', hardest: 'Hardest first' };
+  const NEXT_SORT: Record<ChartSort, ChartSort> = { default: 'easiest', easiest: 'hardest', hardest: 'default' };
 
   const stocks = $derived(app.manifest?.stocks ?? []);
   const visible = $derived.by(() => {
@@ -27,10 +37,47 @@
   });
   // best scores for this timeframe, read once rather than per row per keystroke
   const bests = $derived(new Map(stocks.map((s) => [s.symbol, getBest(s.symbol, tf)])));
-  const groups = $derived([
-    { title: 'Indices', items: visible.filter((s) => s.index) },
-    { title: 'Nifty 50 stocks', items: visible.filter((s) => !s.index) },
-  ].filter((g) => g.items.length));
+  const groups = $derived.by(() => {
+    if (sort === 'default') {
+      return [
+        { title: 'Indices', items: visible.filter((s) => s.index) },
+        { title: 'Nifty 50 stocks', items: visible.filter((s) => !s.index) },
+      ].filter((g) => g.items.length);
+    }
+    const dir = sort === 'easiest' ? 1 : -1;
+    const ranked = [...visible].sort((a, b) => dir * ((a.tfs[tf]?.d ?? 0) - (b.tfs[tf]?.d ?? 0)));
+    const tiers = TIERS.map((title) => ({ title, items: ranked.filter((s) => tierFor(s, tf) === title) }));
+    return (dir > 0 ? tiers : tiers.reverse()).filter((g) => g.items.length);
+  });
+
+  function cycleSort() {
+    sort = NEXT_SORT[sort];
+    setSort(sort);
+  }
+
+  function onKey(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    if (query) query = '';
+    else onback();
+  }
+
+  function onSearchKey(e: KeyboardEvent) {
+    const top = groups[0]?.items[0];
+    if (e.key === 'Enter' && top) onpick(top, tf);
+  }
+
+  /** Radio-group keys: arrows move and select, wrapping at the ends. */
+  async function onTfKey(e: KeyboardEvent) {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const n = TIMEFRAMES.length;
+    tf = TIMEFRAMES[(TIMEFRAMES.indexOf(tf) + step + n) % n]!;
+    const track = (e.currentTarget as HTMLElement).parentElement!;
+    await tick();
+    track.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+  }
 
   function random() {
     const pool = stocks.filter((s) => s.tfs[tf]);
@@ -39,8 +86,17 @@
   }
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 <div class="scrim" transition:fade={{ duration: 220 }}></div>
-<section class="sheet glass-strong" aria-label="Pick a chart" in:fly={{ y: 40, duration: 520, easing: cubicOut }} out:fly={{ y: 30, duration: 220 }}>
+<section
+  class="sheet glass-strong"
+  aria-label="Pick a chart"
+  in:fly={{ y: 40, duration: 520, easing: cubicOut }}
+  out:fly={{ y: 30, duration: 220 }}
+  onintroend={() => oncover(true)}
+  onoutrostart={() => oncover(false)}
+>
   <header>
     <button class="icon-btn" type="button" aria-label="Back" onclick={onback}><Icon name="back" /></button>
     <h2>Pick a chart</h2>
@@ -50,14 +106,19 @@
   <div class="controls">
     <label class="search">
       <Icon name="search" size={18} />
-      <input type="search" placeholder="Search 54 stocks and indices" bind:value={query} autocomplete="off" spellcheck="false" aria-label="Search stocks" />
+      <input type="search" placeholder="Search 54 stocks and indices" bind:value={query} onkeydown={onSearchKey} autocomplete="off" spellcheck="false" aria-label="Search stocks" />
     </label>
     <div class="track tfs" role="radiogroup" aria-label="Timeframe">
       {#each TIMEFRAMES as t (t)}
-        <button type="button" role="radio" aria-checked={tf === t} class:on={tf === t} onclick={() => (tf = t)}>{TF_SHORT[t]}</button>
+        <button type="button" role="radio" aria-checked={tf === t} tabindex={tf === t ? 0 : -1} class:on={tf === t} onclick={() => (tf = t)} onkeydown={onTfKey}>{TF_SHORT[t]}</button>
       {/each}
     </div>
-    <p class="note">{TF_NOTE[tf]}</p>
+    <div class="noteline">
+      <p class="note">{TF_NOTE[tf]}</p>
+      <button class="sort" type="button" aria-label="Sort: {SORT_LABEL[sort]}. Change sort order" onclick={cycleSort}>
+        <Icon name="sort" size={14} />{SORT_LABEL[sort]}
+      </button>
+    </div>
   </div>
 
   <div class="list">
@@ -66,17 +127,27 @@
       {#each g.items as s (s.symbol)}
         {@const best = bests.get(s.symbol) ?? 0}
         {@const up = (s.chg ?? 0) >= 0}
-        <button type="button" class="row" class:loading={app.loading === s.symbol} disabled={!!app.loading} onclick={() => onpick(s, tf)}>
+        {@const tier = tierFor(s, tf)}
+        <button
+          type="button"
+          class="row"
+          class:loading={app.loading === s.symbol}
+          aria-busy={app.loading === s.symbol}
+          onpointerenter={(e) => { if (e.pointerType === 'mouse') preloadCandles(s.symbol, tf); }}
+          onpointerdown={() => preloadCandles(s.symbol, tf)}
+          onfocus={() => preloadCandles(s.symbol, tf)}
+          onclick={() => onpick(s, tf)}
+        >
           <span class="id">
             <span class="symline"><span class="sym data">{s.symbol}</span>{#if best}<span class="best">Best {best}</span>{/if}</span>
-            <span class="name">{s.name}</span>
+            <span class="name">{#if tier}<span class="tier" data-tier={tier}><i></i><i></i><i></i><i></i>{tier}</span>{/if}{s.name}</span>
           </span>
           <svg class="spark" viewBox="0 0 72 28" preserveAspectRatio="none" aria-hidden="true">
             <path d={linePath(s.spark.map((v) => v / 99), 72, 28, 3)} class:up class:down={!up} />
           </svg>
           <span class="quote">
             {#if s.last}<span class="data px">{fmtPrice(s.last, s.index)}</span>{/if}
-            {#if s.chg !== undefined}<span class="data chg" class:up class:down={!up}>{fmtPct(s.chg)}</span>{/if}
+            {#if s.chg !== undefined}<span class="data chg"><span class:up class:down={!up}>{fmtPct(s.chg)}</span> <abbr title="over the last month">1M</abbr></span>{/if}
           </span>
         </button>
       {/each}
@@ -116,7 +187,16 @@
   .tfs button { height: calc(var(--h-control) - 8px); font-weight: 600; font-size: 14px; color: var(--cream-3); transition: background-color 160ms var(--ease), color 160ms var(--ease); }
   .tfs button:hover { color: var(--cream); }
   .tfs button.on { background: var(--cream); color: #2a1236; }
-  .note { font-size: 12.5px; color: var(--cream-3); padding: 0 4px; margin-top: -4px; }
+  .noteline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; }
+  .note { font-size: 12.5px; color: var(--cream-3); padding: 0 4px; }
+  /* a small label, with a tap area that overhangs into the gaps around it */
+  .sort {
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    min-height: 44px; margin-block: -12px; padding: 0 4px;
+    font-size: 12.5px; font-weight: 600; color: var(--cream-2);
+    transition: color 140ms var(--ease);
+  }
+  .sort:hover { color: var(--cream); }
 
   .list { flex: 1; overflow-y: auto; padding: 4px calc(var(--pad) - 8px) max(var(--pad), env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
   h3 { font-size: 12.5px; font-weight: 600; color: var(--cream-3); padding: 20px 8px 6px; }
@@ -127,14 +207,19 @@
   }
   .row:hover { background: var(--glass-hover); }
   .row:active { background: var(--glass-press); }
-  .row:disabled { cursor: default; }
-  .row:disabled:not(.loading) { opacity: 0.5; }
   .row.loading { background: var(--glass-press); }
   .row.loading .sym::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: var(--rim); vertical-align: middle; animation: pulse 0.8s ease-in-out infinite alternate; }
   @keyframes pulse { to { opacity: 0.2; } }
   .id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .sym { font-weight: 600; font-size: 14px; color: var(--cream); }
   .name { font-size: 13px; color: var(--cream-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tier { display: inline-flex; align-items: center; gap: 1.5px; margin-right: 7px; font-weight: 600; color: var(--rim); }
+  .tier i { width: 3px; height: 9px; border-radius: 1px; background: currentColor; opacity: 0.28; }
+  .tier i:last-of-type { margin-right: 4px; }
+  .tier[data-tier='Easy'] i:nth-child(-n + 1),
+  .tier[data-tier='Medium'] i:nth-child(-n + 2),
+  .tier[data-tier='Hard'] i:nth-child(-n + 3),
+  .tier[data-tier='Brutal'] i { opacity: 1; }
   .symline { display: flex; align-items: baseline; gap: 8px; }
   .best { font-size: 12px; font-weight: 600; color: var(--rim); white-space: nowrap; }
   .spark { width: 64px; height: 28px; overflow: visible; }
@@ -144,6 +229,7 @@
   .quote { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
   .px { font-size: 13px; color: var(--cream); }
   .chg { font-size: 12px; }
+  .chg abbr { color: var(--cream-3); text-decoration: none; }
   .empty { padding: 40px 16px; text-align: center; color: var(--cream-3); font-size: 15px; line-height: 1.5; }
 
   @media (max-width: 380px) {

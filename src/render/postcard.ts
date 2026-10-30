@@ -240,8 +240,8 @@ export async function drawOgImage(series: number[]): Promise<HTMLCanvasElement> 
     ctx.fillRect(rx, -20, 3, cy - gap + 20 - r);
     ctx.fillRect(rx, cy + gap + r, 3, horizon - cy - gap - r);
 
-    const tint = up ? '143,240,196' : '255,138,122';
-    const solid = up ? '#8ff0c4' : '#ff8a7a';
+    const tint = up ? '143,240,196' : '255,157,143';
+    const solid = up ? '#8ff0c4' : '#ff9d8f';
     const band = 24 + 130 * body;
     let tg = ctx.createLinearGradient(0, cy - gap, 0, cy - gap - band);
     tg.addColorStop(0, `rgba(${tint},0.3)`); tg.addColorStop(1, `rgba(${tint},0)`);

@@ -15,5 +15,12 @@ export function setBest(symbol: string, tf: string, score: number): void {
 export const getFighter = (): Fighter => (get('stochastick.fighter') === 'bear' ? 'bear' : 'bull');
 export const setFighter = (f: Fighter): void => set('stochastick.fighter', f);
 
+export type ChartSort = 'default' | 'easiest' | 'hardest';
+export const getSort = (): ChartSort => {
+  const s = get('stochastick.sort');
+  return s === 'easiest' || s === 'hardest' ? s : 'default';
+};
+export const setSort = (s: ChartSort): void => set('stochastick.sort', s);
+
 export const getMuted = (): boolean => get('stochastick.muted') === '1';
 export const setMuted = (m: boolean): void => set('stochastick.muted', m ? '1' : '0');

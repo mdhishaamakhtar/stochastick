@@ -1,5 +1,5 @@
 <script lang="ts">
-  type Name = 'back' | 'sound' | 'muted' | 'share' | 'copy' | 'search' | 'shuffle' | 'close' | 'retry';
+  type Name = 'back' | 'sound' | 'muted' | 'share' | 'copy' | 'search' | 'shuffle' | 'close' | 'retry' | 'sort';
   let { name, size = 20 }: { name: Name; size?: number } = $props();
 </script>
 
@@ -21,6 +21,8 @@
   {:else if name === 'search'}
     <circle cx="11" cy="11" r="6.5" />
     <path d="M20 20l-4.2-4.2" />
+  {:else if name === 'sort'}
+    <path d="M4 7h16M7 12h10M10 17h4" />
   {:else if name === 'shuffle'}
     <path d="M4 7h3.5c4 0 5 10 9 10H20M4 17h3.5c1.6 0 2.7-1.6 3.6-3.4M13 10.4c.9-1.8 2-3.4 3.5-3.4H20" />
     <path d="M17.5 4.5L20 7l-2.5 2.5M17.5 14.5L20 17l-2.5 2.5" />

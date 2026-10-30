@@ -14,6 +14,8 @@ import type { Fighter } from '../render/fighters.ts';
 import { app } from './app.svelte.ts';
 import { downsample, fmtDate } from './format.ts';
 import { onReducedMotionChange, prefersReducedMotion } from './motion.ts';
+import { FpsMeter } from './fps.ts';
+import { FrameBudget, QUALITY } from './quality.ts';
 import { getBest, setBest } from './storage.ts';
 
 const DEMO_SYMBOL = 'NIFTY50';
@@ -41,6 +43,13 @@ export class Engine {
   private suspended = false;
   /** reduced motion: the demo is a still frame, so the clock stays stopped */
   private demoHeld = false;
+  /** the picker sheet hides the demo, so nothing needs drawing behind it */
+  private covered = false;
+  private capped = false;
+  private quality = 0;
+  private budget = new FrameBudget();
+  private meter = new URLSearchParams(location.search).has('fps') ? new FpsMeter() : null;
+  private skyDue = false;
   private loop: ReturnType<typeof startLoop>;
   private shownScore = -1;
   private shownCandle = -1;
@@ -51,13 +60,13 @@ export class Engine {
     this.scene.setFighter(app.fighter);
     this.resize();
     window.addEventListener('resize', () => this.resize());
-    this.loop = startLoop((dt) => this.update(dt), (a) => this.render(a));
+    this.loop = startLoop((dt) => this.update(dt), (a) => this.render(a, this.skyDue = !this.skyDue), (delta) => this.watchFrames(delta));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.loop.setPaused(true);
         if (this.mode === 'play' && this.game?.phase === 'playing') this.suspended = true;
       } else if (!this.suspended) {
-        this.loop.setPaused(this.demoHeld);
+        this.loop.setPaused(this.demoHeld || this.covered);
       } else {
         app.paused = true; // shows the "tap to fly" prompt; the run is still live
         this.render(0);
@@ -73,6 +82,32 @@ export class Engine {
     this.sky.resize(this.view.w, this.view.h);
     this.scene.resize(this.view);
     if (this.game) this.render(0);
+  }
+
+  /** Stop drawing behind the sheet where it fills the screen (it floats on wide ones). */
+  setCovered(on: boolean): void {
+    const covered = on && window.innerWidth < 720;
+    if (this.mode !== 'demo' || covered === this.covered) return;
+    this.covered = covered;
+    if (covered) this.render(0);
+    this.loop.setPaused(covered || this.demoHeld);
+  }
+
+  private capFrames(on: boolean): void {
+    this.capped = on;
+    this.loop.setMaxFps(on ? 30 : 0);
+  }
+
+  /** Step resolution, then the frosted glass, down on a GPU that can't keep up. */
+  private watchFrames(delta: number): void {
+    this.meter?.sample(delta * 1000, this.quality);
+    if (this.capped || this.quality >= QUALITY.length - 1) return;
+    if (!this.budget.sample(delta * 1000)) return;
+    const q = QUALITY[++this.quality]!;
+    this.scene.maxDpr = q.scene;
+    this.sky.maxDpr = q.sky;
+    document.documentElement.classList.toggle('low-gpu', !q.frost);
+    this.resize();
   }
 
   setFighter(f: Fighter): void {
@@ -91,7 +126,8 @@ export class Engine {
     }
     this.suspended = false;
     this.demoHeld = prefersReducedMotion();
-    this.loop.setPaused(this.demoHeld);
+    this.capFrames(false);
+    this.loop.setPaused(this.demoHeld || this.covered);
     const n = this.demoCandles.length;
     const start = Math.floor(Math.random() * Math.max(1, n - 260));
     this.useLevel(this.demoCandles.slice(start));
@@ -101,6 +137,7 @@ export class Engine {
     app.demo.name = name;
     this.shownCandle = -1;
     if (this.demoHeld) this.holdDemo();
+    else if (this.covered) this.render(0);
   }
 
   /** Fly a few seconds unseen so candles fill the frame, then show that one frame. */
@@ -140,6 +177,8 @@ export class Engine {
     this.scene.reset();
     this.suspended = false;
     this.demoHeld = false;
+    this.covered = false;
+    this.capFrames(false);
     app.paused = false;
     this.loop.setPaused(false);
     this.deathTimer = 0;
@@ -263,7 +302,10 @@ export class Engine {
     // what came next, so even a short run reads as a line on the card.
     const shown = Math.min(this.candles.length, end.index + Math.max(12, Math.round(end.index * 0.5)) + 1);
     const chart = downsample(this.candles.slice(0, shown).map((c) => c.c), 140);
+    const noRun = g.score === 0 && !survivedAll;
     app.death = {
+      title: survivedAll ? 'You flew the whole chart' : noRun ? 'Rekt at the opening bell' : `Rekt on ${fmtDate(end.candle.t, app.tf)}`,
+      noRun,
       score: g.score,
       best: app.best,
       isNewBest,
@@ -278,15 +320,17 @@ export class Engine {
       up: end.candle.c >= first.candle.c,
       shownAt: performance.now(),
     };
+    this.capFrames(true); // only the sky moves behind the card
   }
 
-  private render(alpha: number): void {
+  /** The sky drifts too slowly to show the difference, so it renders every other frame. */
+  private render(alpha: number, drawSky = true): void {
     const g = this.game;
     const v = this.view;
     const drift = g ? g.scrollX * 0.00012 : 0;
     // ambient motion only: stars, clouds and the idle bob hold still
     const time = prefersReducedMotion() ? 0 : this.time;
-    this.sky.render(time, this.sun, v.ground, drift, v.sunX, sunY(v, this.sun), v.sunR);
+    if (drawSky) this.sky.render(time, this.sun, v.ground, drift, v.sunX, sunY(v, this.sun), v.sunR);
     if (g) this.scene.draw(g, alpha, time, this.sun);
   }
 }

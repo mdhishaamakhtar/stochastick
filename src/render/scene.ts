@@ -8,7 +8,7 @@ import { renderFighter, type Fighter } from './fighters.ts';
 import type { View } from './view.ts';
 
 const JADE = '#8ff0c4';
-const CORAL = '#ff8a7a';
+const CORAL = '#ff9d8f';
 const CREAM = '#fff3e6';
 const HEAD_W = 58; // fighter head width, world units
 
@@ -36,11 +36,12 @@ function glowSprite(color: string): HTMLCanvasElement {
 export class Scene {
   private ctx: CanvasRenderingContext2D;
   private dpr = 1;
+  maxDpr = 2;
   private v!: View;
   private fighter: Fighter = 'bull';
   private sprite: HTMLCanvasElement | null = null;
   private heights: number[] = [];
-  private glow = { jade: glowSprite('rgba(143,240,196,0.75)'), coral: glowSprite('rgba(255,138,122,0.75)'), cream: glowSprite('rgba(255,236,220,0.8)') };
+  private glow = { jade: glowSprite('rgba(143,240,196,0.75)'), coral: glowSprite('rgba(255,157,143,0.75)'), cream: glowSprite('rgba(255,236,220,0.8)') };
 
   private motes: Mote[] = Array.from({ length: 96 }, () => ({ x: 0, y: 0, vx: 0, vy: 0, life: 0, ttl: 1, r: 2, color: CREAM }));
   private flapT = 0;
@@ -51,6 +52,10 @@ export class Scene {
   // so drawing a candle allocates nothing per frame.
   private bodyGrad: Record<'left' | 'right', CanvasGradient> | null = null;
   private bandGrad: Record<'up' | 'down', CanvasGradient> | null = null;
+  private fogFar: CanvasGradient | null = null;
+  private fogNear: CanvasGradient | null = null;
+  private groundFill: CanvasGradient | null = null;
+  private groundGlow: CanvasGradient | null = null;
 
   private canvas: HTMLCanvasElement;
 
@@ -61,7 +66,7 @@ export class Scene {
 
   resize(v: View): void {
     this.v = v;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
     this.canvas.width = Math.round(v.w * this.dpr);
     this.canvas.height = Math.round(v.h * this.dpr);
     this.sprite = null;
@@ -79,7 +84,22 @@ export class Scene {
       return g;
     };
     this.bodyGrad = { left: body('left'), right: body('right') };
-    this.bandGrad = { up: band(143, 240, 196), down: band(255, 138, 122) };
+    this.bandGrad = { up: band(143, 240, 196), down: band(255, 157, 143) };
+    const fog = (top: number, bottom: number) => {
+      const g = this.ctx.createLinearGradient(0, top, 0, bottom);
+      g.addColorStop(0, 'rgba(255,214,196,0)');
+      g.addColorStop(0.55, 'rgba(255,214,196,1)');
+      g.addColorStop(1, 'rgba(255,214,196,0)');
+      return g;
+    };
+    this.fogFar = fog(v.ground - 300 * v.scale, v.ground - 30 * v.scale);
+    this.fogNear = fog(v.ground - 120 * v.scale, v.ground + 4);
+    this.groundFill = this.ctx.createLinearGradient(0, v.ground, 0, v.h);
+    this.groundFill.addColorStop(0, '#22102f');
+    this.groundFill.addColorStop(1, '#0d0616');
+    this.groundGlow = this.ctx.createRadialGradient(v.sunX, v.ground, 0, v.sunX, v.ground, v.w * 0.5);
+    this.groundGlow.addColorStop(0, 'rgba(255,186,150,1)');
+    this.groundGlow.addColorStop(1, 'rgba(255,186,150,0)');
   }
 
   setFighter(f: Fighter): void {
@@ -217,27 +237,25 @@ export class Scene {
       ctx.fill();
       ctx.stroke();
     };
-    const fog = (top: number, bottom: number, a: number) => {
-      const gr = ctx.createLinearGradient(0, top, 0, bottom);
-      gr.addColorStop(0, 'rgba(255,214,196,0)');
-      gr.addColorStop(0.55, `rgba(255,214,196,${a})`);
-      gr.addColorStop(1, 'rgba(255,214,196,0)');
+    const fog = (gr: CanvasGradient, top: number, bottom: number, a: number) => {
+      ctx.globalAlpha = a;
       ctx.fillStyle = gr;
       ctx.fillRect(0, top, v.w, bottom - top);
+      ctx.globalAlpha = 1;
     };
     const far = rgba(lerp(126, 172, sun), lerp(50, 72, sun), lerp(104, 122, sun), 0.6);
     const mid = rgba(lerp(66, 94, sun), lerp(26, 35, sun), lerp(70, 87, sun), 1);
     layer(0.14, 22 * s + 6, 11 * s + 2, 70, 230, 2, 0, far);
-    fog(v.ground - 300 * s, v.ground - 30 * s, 0.24 + 0.1 * sun);
+    fog(this.fogFar!, v.ground - 300 * s, v.ground - 30 * s, 0.24 + 0.1 * sun);
     layer(0.34, 46 * s + 10, 22 * s + 3, 30, 150, 3, 7, mid);
-    fog(v.ground - 120 * s, v.ground + 4, 0.16 + 0.08 * sun);
+    fog(this.fogNear!, v.ground - 120 * s, v.ground + 4, 0.16 + 0.08 * sun);
   }
 
   private drawObstacles(obstacles: Obstacle[], scroll: number, sun: number): void {
     const { ctx, v } = this;
     const s = v.scale;
     const w = OBSTACLE_HALF_W * 2 * s;
-    const rimA = 0.5 + 0.35 * sun;
+    const rimColor = `rgba(255,178,140,${0.5 + 0.35 * sun})`;
     const top = -v.offY / s - 40; // world y of the screen top (with shake margin)
     for (const ob of obstacles) {
       const wx = ob.x - scroll;
@@ -270,10 +288,12 @@ export class Scene {
       ctx.restore();
 
       const rw = Math.max(1.25, 1.6 * s);
-      for (const [edge, a] of [[x0 + w - rw, right], [x0, 1 - right]] as const) {
+      ctx.fillStyle = rimColor;
+      for (let side = 0; side < 2; side++) {
+        const a = side ? 1 - right : right;
         if (a <= 0.01) continue;
+        const edge = side ? x0 : x0 + w - rw;
         ctx.globalAlpha = fade * a;
-        ctx.fillStyle = `rgba(255,178,140,${rimA})`;
         ctx.fillRect(edge, yTop, rw, topEnd - yTop - r);
         ctx.fillRect(edge, botStart + r, rw, v.ground - botStart - r);
       }
@@ -341,37 +361,43 @@ export class Scene {
     const { ctx, v } = this;
     const s = v.scale;
     const birdX = BIRD_X * s;
-    const pts: Array<[number, number, boolean]> = [];
-    for (let i = Math.max(0, g.nextObstacle - 8); i < g.obstacles.length; i++) {
-      const ob = g.obstacles[i]!;
-      const wx = ob.x - scroll;
-      if (wx > FOG_FAR) break;
-      pts.push([wx * s, v.offY + ob.gapCenter * s, wx * s < birdX]);
-    }
-    if (pts.length < 2) return;
-    const path = new Path2D();
-    pts.forEach(([x, y], i) => (i ? path.lineTo(x, y) : path.moveTo(x, y)));
+    const first = Math.max(0, g.nextObstacle - 8);
+    let end = first;
+    while (end < g.obstacles.length && g.obstacles[end]!.x - scroll <= FOG_FAR) end++;
+    if (end - first < 2) return;
+    const trace = () => {
+      ctx.beginPath();
+      for (let i = first; i < end; i++) {
+        const ob = g.obstacles[i]!;
+        const x = (ob.x - scroll) * s, y = v.offY + ob.gapCenter * s;
+        if (i === first) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    };
 
     ctx.save();
     ctx.lineWidth = Math.max(1, 1.4 * s);
     ctx.lineJoin = 'round';
     ctx.setLineDash([2 * s + 1, 6 * s + 2]);
     ctx.strokeStyle = 'rgba(255,243,230,0.32)';
-    ctx.stroke(path);
+    trace();
+    ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.rect(-10, 0, birdX + 10, v.h);
     ctx.clip();
     ctx.lineWidth = Math.max(1.25, 1.8 * s);
     ctx.strokeStyle = 'rgba(255,243,230,0.85)';
-    ctx.stroke(path);
+    trace();
+    ctx.stroke();
     ctx.restore();
 
     const r = Math.max(1.6, 2.4 * s);
-    for (const [x, y, passed] of pts) {
+    for (let i = first; i < end; i++) {
+      const ob = g.obstacles[i]!;
+      const x = (ob.x - scroll) * s, y = v.offY + ob.gapCenter * s;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
-      if (passed) { ctx.fillStyle = CREAM; ctx.fill(); }
+      if (x < birdX) { ctx.fillStyle = CREAM; ctx.fill(); }
       else { ctx.strokeStyle = 'rgba(255,243,230,0.45)'; ctx.lineWidth = 1; ctx.stroke(); }
     }
   }
@@ -429,16 +455,12 @@ export class Scene {
   private drawGround(sun: number): void {
     const { ctx, v } = this;
     if (v.ground >= v.h - 0.5) return;
-    const gr = ctx.createLinearGradient(0, v.ground, 0, v.h);
-    gr.addColorStop(0, '#22102f');
-    gr.addColorStop(1, '#0d0616');
-    ctx.fillStyle = gr;
+    ctx.fillStyle = this.groundFill!;
     ctx.fillRect(-20, v.ground, v.w + 40, v.h - v.ground + 20);
-    const glow = ctx.createRadialGradient(v.sunX, v.ground, 0, v.sunX, v.ground, v.w * 0.5);
-    glow.addColorStop(0, `rgba(255,186,150,${0.16 + 0.12 * sun})`);
-    glow.addColorStop(1, 'rgba(255,186,150,0)');
-    ctx.fillStyle = glow;
+    ctx.globalAlpha = 0.16 + 0.12 * sun;
+    ctx.fillStyle = this.groundGlow!;
     ctx.fillRect(0, v.ground, v.w, Math.min(v.h - v.ground, 120));
+    ctx.globalAlpha = 1;
     ctx.fillStyle = `rgba(255,178,140,${0.28 + 0.2 * sun})`;
     ctx.fillRect(0, v.ground, v.w, 1);
   }

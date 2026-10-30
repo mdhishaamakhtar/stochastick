@@ -9,7 +9,18 @@ export const TF_LABELS: Record<Timeframe, string> = {
   '1wk': 'Weekly',
 };
 
-export interface TfMeta { n: number; from: number; to: number }
+export const TIERS = ['Easy', 'Medium', 'Hard', 'Brutal'] as const;
+export type Tier = (typeof TIERS)[number];
+
+export const tierOf = (difficulty: number): Tier => TIERS[Math.min(3, Math.floor(difficulty / 25))]!;
+
+export interface TfMeta {
+  n: number;
+  from: number;
+  to: number;
+  /** 0 (easiest) to 99 (hardest), ranked across every chart by a bot's flights */
+  d?: number;
+}
 
 export interface StockMeta {
   symbol: string;
@@ -24,6 +35,11 @@ export interface StockMeta {
 export interface Manifest {
   generated: string;
   stocks: StockMeta[];
+}
+
+export function tierFor(stock: StockMeta | null, tf: Timeframe): Tier | null {
+  const d = stock?.tfs[tf]?.d;
+  return d === undefined ? null : tierOf(d);
 }
 
 export function fileSymbol(symbol: string): string {

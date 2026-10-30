@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fetch-data": "node --experimental-strip-types scripts/fetch-data.ts"
+    "fetch-data": "node --experimental-strip-types scripts/fetch-data.ts && npm run score-difficulty",
+    "score-difficulty": "node --experimental-strip-types scripts/score-difficulty.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
