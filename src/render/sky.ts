@@ -84,6 +84,7 @@ export class Sky {
   private w = 1;
   private h = 1;
   private dpr = 1;
+  private ready = false; // false until the shader links, and while the context is lost
 
   private canvas: HTMLCanvasElement;
 
@@ -91,7 +92,30 @@ export class Sky {
     this.canvas = canvas;
     this.gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: false });
     if (!this.gl) { canvas.classList.add('sky-fallback'); return; }
-    const gl = this.gl;
+    // Phones drop GL contexts when backgrounded; the CSS sky covers the gap.
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault(); // without this the context is never restored
+      this.ready = false;
+      canvas.classList.add('sky-fallback');
+    });
+    canvas.addEventListener('webglcontextrestored', () => this.init());
+    this.init();
+  }
+
+  /** Build everything the context owns; a failure leaves the CSS sky in place. */
+  private init(): void {
+    const gl = this.gl!;
+    try {
+      this.build(gl);
+      this.ready = true;
+      this.canvas.classList.remove('sky-fallback');
+    } catch (err) {
+      console.warn('Sky shader unavailable', err);
+      this.canvas.classList.add('sky-fallback');
+    }
+  }
+
+  private build(gl: WebGL2RenderingContext): void {
     const sh = (type: number, src: string) => {
       const s = gl.createShader(type)!;
       gl.shaderSource(s, src);
@@ -103,6 +127,7 @@ export class Sky {
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
     gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
     gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) ?? 'link');
     gl.useProgram(prog);
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -125,7 +150,7 @@ export class Sky {
   /** `sunX/sunY/sunR` in CSS px; `horizon` is the ground line in CSS px. */
   render(time: number, sun: number, horizon: number, drift: number, sunX: number, sunY: number, sunR: number): void {
     const gl = this.gl;
-    if (!gl) return;
+    if (!gl || !this.ready) return;
     const k = this.dpr;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.uniform2f(this.u.uRes!, this.canvas.width, this.canvas.height);

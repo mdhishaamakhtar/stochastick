@@ -1,6 +1,7 @@
 import { loadCandles } from '../data/load.ts';
 import type { StockMeta, Timeframe } from '../data/manifest.ts';
 import type { Candle } from '../data/types.ts';
+import { PHYS_DT } from '../game/constants.ts';
 import { buildLevel, type Obstacle } from '../game/level.ts';
 import { createGame, stepGame, tapGame, type GameState } from '../game/state.ts';
 import { startLoop } from '../game/loop.ts';
@@ -12,6 +13,7 @@ import { computeView, sunY, type View } from '../render/view.ts';
 import type { Fighter } from '../render/fighters.ts';
 import { app } from './app.svelte.ts';
 import { downsample, fmtDate } from './format.ts';
+import { onReducedMotionChange, prefersReducedMotion } from './motion.ts';
 import { getBest, setBest } from './storage.ts';
 
 const DEMO_SYMBOL = 'NIFTY50';
@@ -37,6 +39,8 @@ export class Engine {
   private time = 0;
   private sun = 0.55;
   private suspended = false;
+  /** reduced motion: the demo is a still frame, so the clock stays stopped */
+  private demoHeld = false;
   private loop: ReturnType<typeof startLoop>;
   private shownScore = -1;
   private shownCandle = -1;
@@ -53,11 +57,14 @@ export class Engine {
         this.loop.setPaused(true);
         if (this.mode === 'play' && this.game?.phase === 'playing') this.suspended = true;
       } else if (!this.suspended) {
-        this.loop.setPaused(false);
+        this.loop.setPaused(this.demoHeld);
       } else {
         app.paused = true; // shows the "tap to fly" prompt; the run is still live
         this.render(0);
       }
+    });
+    onReducedMotionChange(() => {
+      if (this.mode === 'demo' && this.demoCandles.length) void this.startDemo();
     });
   }
 
@@ -68,7 +75,10 @@ export class Engine {
     if (this.game) this.render(0);
   }
 
-  setFighter(f: Fighter): void { this.scene.setFighter(f); }
+  setFighter(f: Fighter): void {
+    this.scene.setFighter(f);
+    if (this.demoHeld) this.render(0);
+  }
 
   // ---- demo ---------------------------------------------------------------
 
@@ -80,7 +90,8 @@ export class Engine {
       this.demoCandles = candles;
     }
     this.suspended = false;
-    this.loop.setPaused(false);
+    this.demoHeld = prefersReducedMotion();
+    this.loop.setPaused(this.demoHeld);
     const n = this.demoCandles.length;
     const start = Math.floor(Math.random() * Math.max(1, n - 260));
     this.useLevel(this.demoCandles.slice(start));
@@ -89,6 +100,13 @@ export class Engine {
     const name = app.manifest?.stocks.find((s) => s.symbol === DEMO_SYMBOL)?.name ?? 'NIFTY 50';
     app.demo.name = name;
     this.shownCandle = -1;
+    if (this.demoHeld) this.holdDemo();
+  }
+
+  /** Fly a few seconds unseen so candles fill the frame, then show that one frame. */
+  private holdDemo(): void {
+    for (let i = 0; i < 480 && this.game?.phase === 'playing'; i++) this.update(PHYS_DT);
+    this.render(0);
   }
 
   // ---- play ---------------------------------------------------------------
@@ -121,6 +139,7 @@ export class Engine {
     this.game = createGame(this.level);
     this.scene.reset();
     this.suspended = false;
+    this.demoHeld = false;
     app.paused = false;
     this.loop.setPaused(false);
     this.deathTimer = 0;
@@ -257,6 +276,7 @@ export class Engine {
       chart,
       at: end.index / Math.max(1, shown - 1),
       up: end.candle.c >= first.candle.c,
+      shownAt: performance.now(),
     };
   }
 
@@ -264,7 +284,9 @@ export class Engine {
     const g = this.game;
     const v = this.view;
     const drift = g ? g.scrollX * 0.00012 : 0;
-    this.sky.render(this.time, this.sun, v.ground, drift, v.sunX, sunY(v, this.sun), v.sunR);
-    if (g) this.scene.draw(g, alpha, this.time, this.sun);
+    // ambient motion only: stars, clouds and the idle bob hold still
+    const time = prefersReducedMotion() ? 0 : this.time;
+    this.sky.render(time, this.sun, v.ground, drift, v.sunX, sunY(v, this.sun), v.sunR);
+    if (g) this.scene.draw(g, alpha, time, this.sun);
   }
 }

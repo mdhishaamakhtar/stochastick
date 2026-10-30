@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import type { DeathInfo } from '../lib/app.svelte.ts';
   import { fmtPct, fmtPrice, linePath } from '../lib/format.ts';
+  import { prefersReducedMotion } from '../lib/motion.ts';
   import { canCopyImage } from '../render/postcard.ts';
   import type { Fighter } from '../render/fighters.ts';
   import Icon from './Icon.svelte';
@@ -24,7 +25,7 @@
 
   const W = 300, H = 64;
   const copyable = canCopyImage();
-  const shown = new Tween(0, { duration: 700, easing: cubicOut });
+  const shown = new Tween(0, { duration: prefersReducedMotion() ? 0 : 700, easing: cubicOut });
   onMount(() => { shown.target = info.score; });
 
   const path = $derived(linePath(info.chart, W, H, 4));

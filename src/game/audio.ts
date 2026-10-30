@@ -28,7 +28,8 @@ export function unlock(): void {
       const d = noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    // iOS leaves the context 'interrupted', not 'suspended', after an app switch.
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {});
   } catch { ctx = null; }
 }
 

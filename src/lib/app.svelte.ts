@@ -21,6 +21,8 @@ export interface DeathInfo {
   /** where on `chart` (0..1) the run ended */
   at: number;
   up: boolean;
+  /** performance.now() when the card went up */
+  shownAt: number;
 }
 
 /** Everything the UI renders. The engine writes here; components read. */

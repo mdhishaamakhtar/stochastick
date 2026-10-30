@@ -22,6 +22,9 @@
   let sharing = $state(false);
   let toastTimer = 0;
 
+  // A player still mashing to stay alive must not dismiss the card unseen.
+  const RETRY_GUARD_MS = 500;
+
   const HASH: Record<Screen, string> = { landing: '', picker: '#charts', game: '#fly' };
 
   function say(msg: string) {
@@ -71,6 +74,10 @@
     } finally {
       if (app.loading === stock.symbol) app.loading = null;
     }
+  }
+
+  function retry() {
+    if (app.death && performance.now() - app.death.shownAt >= RETRY_GUARD_MS) engine.restart();
   }
 
   function chooseFighter(f: Fighter) {
@@ -129,7 +136,7 @@
       if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyR') {
         if (t?.tagName === 'BUTTON' && e.code !== 'KeyR') return; // let a focused button act
         e.preventDefault();
-        engine.restart();
+        if (!e.repeat) retry();
       }
       return;
     }
@@ -165,7 +172,7 @@
   {:else if app.screen === 'game'}
     <Hud onback={() => history.back()} onmute={toggleMute} onfighter={chooseFighter} />
     {#if app.death}
-      <DeathCard info={app.death} {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={() => engine.restart()} onstocks={() => history.back()} onshare={share} oncopy={copy} />
+      <DeathCard info={app.death} {sharing} index={app.stock?.index} fighter={app.fighter} onfighter={chooseFighter} onretry={retry} onstocks={() => history.back()} onshare={share} oncopy={copy} />
     {/if}
   {/if}
 

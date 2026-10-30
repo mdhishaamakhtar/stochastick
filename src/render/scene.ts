@@ -3,6 +3,7 @@ import type { Obstacle } from '../game/level.ts';
 import {
   BIRD_X, OBSTACLE_HALF_W, PHYS_DT, SCROLL_SPEED, FOG_NEAR, FOG_FAR, WORLD_H, GRAVITY,
 } from '../game/constants.ts';
+import { prefersReducedMotion } from '../lib/motion.ts';
 import { renderFighter, type Fighter } from './fighters.ts';
 import type { View } from './view.ts';
 
@@ -131,9 +132,11 @@ export class Scene {
   }
 
   onDeath(birdY: number, rot: number): void {
+    const still = prefersReducedMotion();
+    this.fall = { y: birdY, vy: -380, rot, vr: still ? 0 : 7 };
+    if (still) return; // no shake, flash or burst: the drop and the card carry it
     this.flashT = 0.32;
     this.shakeT = 0.32;
-    this.fall = { y: birdY, vy: -380, rot, vr: 7 };
     const s = this.v.scale;
     const x = BIRD_X * s, y = this.v.offY + birdY * s;
     this.spawn(12, x, y, 0, -60 * s, 220 * s, 220 * s, 0.9, 2.4 * s + 0.6, CREAM);
